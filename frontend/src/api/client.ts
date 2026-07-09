@@ -5,7 +5,7 @@
  * All backend calls go through this file — no fetch() elsewhere.
  */
 
-import type { UploadResponse, InsightsResponse } from "../types";
+import type { UploadResponse, InsightsResponse, SemanticRole } from "../types";
 
 const BASE = "/api";
 
@@ -54,4 +54,14 @@ export async function uploadFile(file: File): Promise<UploadResponse> {
 /** Generate insights from the currently loaded dataset. */
 export async function generateInsights(): Promise<InsightsResponse> {
   return request<InsightsResponse>("/insights", { method: "POST" });
+}
+
+/** Apply manual semantic role overrides and get the updated profile. */
+export async function updateRoles(
+  overrides: { name: string; semantic_role: SemanticRole }[]
+): Promise<UploadResponse> {
+  return request<UploadResponse>("/update-roles", {
+    method: "POST",
+    body: JSON.stringify({ overrides }),
+  });
 }

@@ -3,13 +3,17 @@
  *
  * Custom hook that manages the complete pipeline flow:
  *   load data → profile → generate insights → select insight
- *
- * Keeps all product state in one place so components stay pure/presentational.
+ *   + manual role overrides → re-run insights
  */
 
 import { useState, useCallback } from "react";
-import type { DataProfile, Insight } from "../types";
-import { loadSampleDataset, uploadFile, generateInsights } from "../api/client";
+import type { DataProfile, Insight, SemanticRole } from "../types";
+import {
+  loadSampleDataset,
+  uploadFile,
+  generateInsights,
+  updateRoles,
+} from "../api/client";
 
 export type AppStage = "landing" | "empty" | "loading" | "profiled" | "analyzing" | "ready" | "error";
 
@@ -19,6 +23,7 @@ interface AppState {
   insights: Insight[];
   selectedInsightId: string | null;
   error: string | null;
+  hasManualOverrides: boolean;
 }
 
 export function useInsights() {
@@ -28,6 +33,7 @@ export function useInsights() {
     insights: [],
     selectedInsightId: null,
     error: null,
+    hasManualOverrides: false,
   });
 
   const selectedInsight =
@@ -36,7 +42,7 @@ export function useInsights() {
   /** Load sample dataset and generate insights. */
   const loadSample = useCallback(async () => {
     try {
-      setState((s) => ({ ...s, stage: "loading", error: null }));
+      setState((s) => ({ ...s, stage: "loading", error: null, hasManualOverrides: false }));
 
       const { profile } = await loadSampleDataset();
       setState((s) => ({ ...s, stage: "analyzing", profile }));
@@ -60,7 +66,7 @@ export function useInsights() {
   /** Upload a CSV file and generate insights. */
   const upload = useCallback(async (file: File) => {
     try {
-      setState((s) => ({ ...s, stage: "loading", error: null }));
+      setState((s) => ({ ...s, stage: "loading", error: null, hasManualOverrides: false }));
 
       const { profile } = await uploadFile(file);
       setState((s) => ({ ...s, stage: "analyzing", profile }));
@@ -81,6 +87,33 @@ export function useInsights() {
     }
   }, []);
 
+  /** Apply manual role overrides, update backend profile, re-run insights. */
+  const applyRoleOverrides = useCallback(
+    async (overrides: { name: string; semantic_role: SemanticRole }[]) => {
+      try {
+        setState((s) => ({ ...s, stage: "analyzing", error: null }));
+
+        const { profile } = await updateRoles(overrides);
+        setState((s) => ({ ...s, profile, hasManualOverrides: true }));
+
+        const { insights } = await generateInsights();
+        setState((s) => ({
+          ...s,
+          stage: "ready",
+          insights,
+          selectedInsightId: insights[0]?.id ?? null,
+        }));
+      } catch (err) {
+        setState((s) => ({
+          ...s,
+          stage: "ready",
+          error: err instanceof Error ? err.message : "Failed to update roles",
+        }));
+      }
+    },
+    []
+  );
+
   /** Select an insight to show its evidence. */
   const selectInsight = useCallback((id: string) => {
     setState((s) => ({ ...s, selectedInsightId: id }));
@@ -94,6 +127,7 @@ export function useInsights() {
       insights: [],
       selectedInsightId: null,
       error: null,
+      hasManualOverrides: false,
     });
   }, []);
 
@@ -104,5 +138,6 @@ export function useInsights() {
     upload,
     selectInsight,
     reset,
+    applyRoleOverrides,
   };
 }

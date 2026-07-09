@@ -3,40 +3,96 @@ routers/insights.py
 -------------------
 Endpoints for the analysis and insight pipeline.
 
-  GET  /api/templates  — list which templates can run for the current dataset
-  POST /api/evidence   — run analysis templates, return raw evidence objects
-  POST /api/insights   — full pipeline: evidence → narrative → Insight[]
-
-These endpoints exist separately from the upload router because they
-represent a different concern: upload handles data ingestion, insights
-handles data analysis.
+  GET  /api/templates    — list which templates can run for the current dataset
+  POST /api/evidence     — run analysis templates, return raw evidence objects
+  POST /api/insights     — full pipeline: evidence → narrative → Insight[]
+  POST /api/update-roles — apply manual semantic role overrides to the stored profile
 """
 
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
 from analysis.registry import get_all_templates, get_runnable_templates, run_all
-from models.schemas import Evidence, Insight
+from models.schemas import Evidence, Insight, SemanticRole, UploadResponse
 from routers.upload import get_current_data
 from services.narrator import generate_insights
 
 router = APIRouter(tags=["insights"])
 
 
+# ---------------------------------------------------------------------------
+# Role override schema
+# ---------------------------------------------------------------------------
+
+class RoleOverride(BaseModel):
+    name: str
+    semantic_role: str
+
+
+class UpdateRolesRequest(BaseModel):
+    overrides: list[RoleOverride]
+
+
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
+
+@router.post("/update-roles", response_model=UploadResponse)
+async def update_roles(body: UpdateRolesRequest):
+    """
+    Apply manual semantic role overrides to the stored DataProfile.
+
+    This enables a human-in-the-loop workflow: the system auto-detects roles,
+    the user corrects any mistakes, then re-runs insights with the fixed roles.
+
+    The override updates the stored profile in-place and also adjusts
+    is_dimension / is_measure flags based on the new role.
+    """
+    current = get_current_data()
+    profile = current.get("profile")
+
+    if profile is None:
+        raise HTTPException(
+            status_code=400,
+            detail="No dataset loaded. Upload a CSV or load the sample dataset first.",
+        )
+
+    # Build lookup from overrides
+    override_map = {o.name: o.semantic_role for o in body.overrides}
+
+    measure_roles = {"revenue", "quantity", "discount"}
+    dimension_roles = {"customer_id", "order_id", "product", "category",
+                       "date", "region", "channel", "status"}
+
+    for col in profile.columns:
+        if col.name in override_map:
+            role_str = override_map[col.name]
+            try:
+                col.semantic_role = SemanticRole(role_str)
+            except ValueError:
+                col.semantic_role = SemanticRole.OTHER
+
+            if col.semantic_role.value in measure_roles:
+                col.is_measure = True
+                col.is_dimension = False
+            elif col.semantic_role.value in dimension_roles:
+                col.is_dimension = True
+                col.is_measure = False
+            else:
+                col.is_dimension = False
+                col.is_measure = False
+
+    # Store updated profile
+    current["profile"] = profile
+
+    return UploadResponse(profile=profile)
+
+
 @router.get("/templates")
 async def list_templates():
-    """
-    List all analysis templates and whether each can run on the current dataset.
-
-    This endpoint is useful for:
-      - Debugging: verify semantic roles map to the right templates
-      - Frontend: show which analyses are available before running them
-      - Demo: recruiters can see the registry pattern in action
-
-    Returns:
-        List of templates with name, description, required roles, and run status.
-    """
+    """List all analysis templates and whether each can run on the current dataset."""
     current = get_current_data()
     profile = current.get("profile")
 
@@ -68,20 +124,7 @@ async def list_templates():
 
 @router.post("/evidence")
 async def compute_evidence():
-    """
-    Run all applicable analysis templates on the current dataset.
-
-    This is the deterministic computation layer. Each template:
-      1. Checks if the dataset has the required semantic roles
-      2. Runs pandas computations on the actual data
-      3. Returns a structured Evidence object with the results
-
-    No LLM is involved. Every number in the output is computed by pandas
-    and is guaranteed to be correct.
-
-    Returns:
-        List of evidence objects, one per runnable template.
-    """
+    """Run all applicable analysis templates on the current dataset."""
     current = get_current_data()
     profile = current.get("profile")
     df = current.get("dataframe")
@@ -109,22 +152,7 @@ async def compute_evidence():
 
 @router.post("/insights")
 async def generate_insight_report():
-    """
-    Full insight generation pipeline: evidence → narrative → Insight[].
-
-    This is the primary endpoint for the Insight Copilot product.
-    It orchestrates the complete pipeline:
-      1. Run all applicable analysis templates (deterministic, pandas)
-      2. Pass evidence objects to the narrator (Claude or mock)
-      3. Return structured Insight objects, each linked to its evidence
-
-    Every numerical claim in the insights is traceable back to a specific
-    pandas computation. The LLM writes narratives; it does not compute.
-
-    Returns:
-        List of Insight objects sorted by priority (high → medium → low),
-        each containing the finding, recommendation, and linked evidence.
-    """
+    """Full insight generation pipeline: evidence → narrative → Insight[]."""
     current = get_current_data()
     profile = current.get("profile")
     df = current.get("dataframe")
@@ -135,7 +163,6 @@ async def generate_insight_report():
             detail="No dataset loaded. Upload a CSV or load the sample dataset first.",
         )
 
-    # Stage 1: Run deterministic analysis templates
     evidence_results = run_all(df, profile)
 
     if not evidence_results:
@@ -145,7 +172,6 @@ async def generate_insight_report():
                    "Check that semantic roles are properly assigned.",
         )
 
-    # Stage 2: Generate narrative insights from evidence
     insights = await generate_insights(evidence_results)
 
     return {

@@ -14,10 +14,12 @@ export default function App() {
     selectedInsightId,
     selectedInsight,
     error,
+    hasManualOverrides,
     loadSample,
     upload,
     selectInsight,
     reset,
+    applyRoleOverrides,
   } = useInsights();
 
   if (stage === "landing") {
@@ -71,7 +73,11 @@ export default function App() {
           <>
             {/* Left panel */}
             <aside className="w-[258px] border-r border-border flex-shrink-0 bg-bg-surface">
-              <DataProfilePanel profile={profile} />
+              <DataProfilePanel
+                profile={profile}
+                hasManualOverrides={hasManualOverrides}
+                onApplyOverrides={applyRoleOverrides}
+              />
             </aside>
 
             {/* Center panel */}
