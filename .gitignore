@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Mac
+.DS_Store
+
+# Temporary / old folders
+backend 2/
+insight-copilot-full/
+temp_*/
+archive/
+*.tar.gz
+
+# Logs
+*.log
