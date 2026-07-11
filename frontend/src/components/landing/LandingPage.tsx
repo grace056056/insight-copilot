@@ -488,7 +488,7 @@ const CSS = `
 .iclp a{color:#818cf8;text-decoration:none}
 .iclp a:hover{color:#a5b4fc}
 
-.iclp .grain{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.34;mix-blend-mode:overlay;background-size:180px 180px;background-repeat:repeat;filter:contrast(1.65) brightness(1.05)}
+.iclp .grain{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.04;mix-blend-mode:screen;background-size:180px 180px;background-repeat:repeat;filter:grayscale(1) contrast(1.8) brightness(1.1)}
 .iclp .grain-deep{position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse 900px 700px at 10% 6%,rgba(99,102,241,.14),transparent 60%),radial-gradient(ellipse 800px 900px at 90% 28%,rgba(124,58,237,.13),transparent 60%),radial-gradient(ellipse 1100px 800px at 50% 102%,rgba(20,14,42,.5),transparent 65%)}
 
 .iclp .sec{position:relative;z-index:1;min-height:calc(100vh - 56px);scroll-snap-align:start;display:flex;flex-direction:column;justify-content:center;padding:56px;overflow:hidden}
