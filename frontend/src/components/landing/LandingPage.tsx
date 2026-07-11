@@ -525,7 +525,7 @@ const CSS = `
 .iclp .eyebrow .dotp{width:6px;height:6px;border-radius:50%;background:#10b981;box-shadow:0 0 6px #10b981}
 .iclp .kicker{font-family:'Instrument Serif',Georgia,serif;font-style:italic;font-size:15px;font-weight:400;letter-spacing:.01em;text-transform:none;color:#a5b4fc}
 
-.iclp .hero-grid{display:flex;gap:72px;align-items:center}
+.iclp .hero-grid{display:flex;gap:72px;align-items:center;justify-content:center}
 .iclp .hero-grid>div:first-child{flex:1.1;min-width:0;max-width:600px}
 .iclp .hero-grid .mock{flex-shrink:0}
 .iclp .h1{font-family:'Bricolage Grotesque',sans-serif;font-size:clamp(46px,4.9vw,72px);line-height:1.02;font-weight:600;letter-spacing:-.03em;margin:22px 0 0;font-variation-settings:'opsz' 72;color:#e4e8ef}
