@@ -65,7 +65,7 @@ async def upload_file(file: UploadFile = File(...)):
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
 
-    allowed_extensions = (".csv", ".tsv")
+    allowed_extensions = (".csv", ".tsv", ".xlsx")
     if not file.filename.lower().endswith(allowed_extensions):
         raise HTTPException(
             status_code=400,

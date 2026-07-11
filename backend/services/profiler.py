@@ -45,25 +45,40 @@ from models.schemas import (
 # Public API
 # ---------------------------------------------------------------------------
 
+def _read_dataframe(file_content: bytes, filename: str) -> pd.DataFrame:
+    """
+    Parse uploaded file bytes into a DataFrame, dispatching on extension.
+    Everything downstream (profiling, health checks, evidence templates)
+    operates on the returned DataFrame and never needs to know the source format.
+    """
+    if filename.lower().endswith(".xlsx"):
+        return pd.read_excel(
+            io.BytesIO(file_content),
+            nrows=settings.MAX_ROWS_FOR_PROFILING,
+            engine="openpyxl",
+        )
+    return pd.read_csv(
+        io.BytesIO(file_content),
+        nrows=settings.MAX_ROWS_FOR_PROFILING,
+    )
+
+
 def profile_csv(file_content: bytes, filename: str) -> tuple[DataProfile, pd.DataFrame]:
     """
-    Profile a CSV file and return a structured DataProfile + the parsed DataFrame.
+    Profile an uploaded file and return a structured DataProfile + the parsed DataFrame.
 
     The DataFrame is returned so downstream services (analysis templates)
     can compute against the actual data without re-parsing.
 
     Args:
-        file_content: Raw bytes of the uploaded CSV file.
-        filename: Original filename for display purposes.
+        file_content: Raw bytes of the uploaded file (.csv, .tsv, or .xlsx).
+        filename: Original filename — used to pick the parser and for display.
 
     Returns:
         Tuple of (DataProfile, DataFrame).
     """
-    # --- Parse CSV ---
-    df = pd.read_csv(
-        io.BytesIO(file_content),
-        nrows=settings.MAX_ROWS_FOR_PROFILING,
-    )
+    # --- Parse file (CSV/TSV or Excel) ---
+    df = _read_dataframe(file_content, filename)
 
     # --- Profile each column ---
     columns: list[ColumnProfile] = []

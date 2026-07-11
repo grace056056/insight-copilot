@@ -202,12 +202,13 @@ export function LandingPage({
       {/* Ambient background layers */}
       <div className="grain-deep" />
       <div className="grain" style={{ backgroundImage: `url("${GRAIN_URI}")` }} />
+      <div className="seam-blend" />
 
-      {/* Shared file input for every Upload CSV button */}
+      {/* Shared file input for every Upload Data File button */}
       <input
         ref={fileRef}
         type="file"
-        accept=".csv,.tsv"
+        accept=".csv,.tsv,.xlsx"
         onChange={(e) => {
           const f = e.target.files?.[0];
           if (f) onUpload(f);
@@ -270,7 +271,7 @@ export function LandingPage({
                 <Ico d={I.lightning} sw={2} /> Try Sample Dataset
               </button>
               <button className="btn btn-ghost btn-lg icon-btn" onClick={openFilePicker}>
-                <Ico d={I.upload} /> Upload CSV
+                <Ico d={I.upload} /> Upload Data File
               </button>
             </div>
             <div className="trust">
@@ -456,7 +457,7 @@ export function LandingPage({
               <Ico d={I.lightning} sw={2} /> Try Sample Dataset
             </button>
             <button className="btn btn-ghost btn-lg icon-btn" onClick={openFilePicker}>
-              <Ico d={I.upload} /> Upload CSV
+              <Ico d={I.upload} /> Upload Data File
             </button>
             <a className="btn btn-ghost btn-lg icon-btn" href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
               <GithubGlyph size={16} /> View GitHub
@@ -490,6 +491,12 @@ const CSS = `
 
 .iclp .grain{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.04;mix-blend-mode:screen;background-size:180px 180px;background-repeat:repeat;filter:grayscale(1) contrast(1.8) brightness(1.1)}
 .iclp .grain-deep{position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse 900px 700px at 10% 6%,rgba(99,102,241,.14),transparent 60%),radial-gradient(ellipse 800px 900px at 90% 28%,rgba(124,58,237,.13),transparent 60%),radial-gradient(ellipse 1100px 800px at 50% 102%,rgba(20,14,42,.5),transparent 65%)}
+
+/* Soft ambient blend spanning the Evidence → CTA seam. Lives outside both
+   sections (siblings clip their own glows via overflow:hidden), positioned at
+   the exact section-4 boundary, so the background reads as one continuous
+   surface instead of a hard cut between a flat panel and a glow. */
+.iclp .seam-blend{position:absolute;left:0;right:0;height:320px;top:calc(56px + 3 * (100vh - 56px) - 160px);pointer-events:none;z-index:0;background:radial-gradient(ellipse 70% 100% at 50% 50%,rgba(99,102,241,.14),rgba(124,58,237,.08) 55%,transparent 78%);filter:blur(50px)}
 
 .iclp .sec{position:relative;z-index:1;min-height:calc(100vh - 56px);scroll-snap-align:start;display:flex;flex-direction:column;justify-content:center;padding:56px;overflow:hidden}
 .iclp .wrap{width:100%;max-width:1240px;margin:0 auto}
