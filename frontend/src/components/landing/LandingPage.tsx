@@ -651,6 +651,6 @@ const CSS = `
   .iclp .lineage{flex-wrap:wrap}
 }
 @media (prefers-reduced-motion:reduce){
-  .iclp{scroll-behavior:auto}
+  .iclp{scroll-behavior:smooth}
 }
 `;
