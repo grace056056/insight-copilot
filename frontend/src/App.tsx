@@ -23,12 +23,11 @@ export default function App() {
   } = useInsights();
 
   if (stage === "landing") {
+    // The landing page supplies its own full-width nav (part of the approved
+    // design), so the app TopBar is intentionally omitted here.
     return (
       <div className="h-screen flex flex-col bg-bg text-text overflow-hidden">
-        <TopBar stage={stage} />
-        <div className="flex-1 overflow-hidden">
-          <LandingPage onLoadSample={loadSample} onUpload={upload} />
-        </div>
+        <LandingPage onLoadSample={loadSample} onUpload={upload} />
       </div>
     );
   }
