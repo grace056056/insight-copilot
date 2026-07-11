@@ -1,8 +1,8 @@
 # Insight Copilot
 
-**AI-powered e-commerce analytics that separates computation from narration.**
+**Evidence-first AI analytics — pandas computes the numbers, AI tells the story.**
 
-Insight Copilot is an analytical platform that profiles e-commerce datasets, computes business evidence deterministically with pandas, and generates AI-powered insights where every numerical claim is auditable and traceable to source data. Built as a portfolio project demonstrating AI engineering, data analysis pipeline design, and full-stack product thinking.
+Insight Copilot is an evidence-first AI analytics assistant. Pandas computes verified evidence from your data, Claude turns that evidence into a clear business narrative, and every insight links back to the exact computation, template, and data slice behind it — so nothing you read is a claim you have to take on faith. Built as an AI analytics product prototype demonstrating AI engineering, data pipeline design, and full-stack product development, currently applied to e-commerce business data.
 
 > **This is not a ChatGPT wrapper.** The system never lets an LLM compute numbers. Pandas computes the evidence. The AI writes the narrative. Every insight links back to the exact computation that produced it.
 
@@ -24,17 +24,15 @@ Insight Copilot solves all three by separating concerns: deterministic computati
 
 ## Key Features
 
-**Landing Page with Product Preview** — A SaaS-style landing page with a split hero layout, embedded product mockup, pipeline visualization, and one-click access to a sample dataset. Users see what the product does before loading any data.
-
 **Two-Stage Data Profiling** — When a CSV is uploaded, a pandas-based profiler computes exact statistics (dtypes, distributions, nulls, cardinality, date ranges). Then an AI classifier assigns semantic business roles to each column (revenue, customer_id, category, date, etc.) using the statistical profile — not raw data. Supports both English and Chinese column-name semantic mapping.
+
+**Evidence-Linked Insights** — Every insight carries a typed `Evidence` object containing the template that produced it, the exact data slice, chart metadata, and a description of the computation. The LLM receives these pre-computed evidence objects and writes narratives constrained to the numbers inside them, so it cannot hallucinate figures because it never computes them. The frontend renders each insight as an expandable audit trail with supporting data tables.
 
 **Analysis Template Registry** — Five self-contained analysis templates (revenue trend, category comparison, top products, AOV analysis, repeat purchase), each declaring the semantic roles it requires. The registry auto-selects which templates can run based on the dataset's column classifications. Adding a new analysis is one file — no existing code changes.
 
-**Evidence-Linked Insights** — Every insight carries a typed `Evidence` object containing the template that produced it, the exact data slice, chart metadata, and a description of the computation. The frontend renders this as an expandable audit trail with supporting data tables.
-
-**Separation of Computation and Narration** — The LLM receives pre-computed evidence objects and writes narratives constrained to the numbers in those objects. It cannot hallucinate figures because it doesn't compute them.
-
 **Three-Panel Analytical Workspace** — A dark-themed React + TypeScript dashboard with Data Context (left), Insight Feed (center), and Evidence Details (right). The Data Context panel shows the dataset profile, semantic role legend, dimensions, and measures. The Insight Feed shows prioritized business insights with actionable recommendations. The Evidence Panel shows the computation description, key metrics, visualization metadata, and a supporting data table — with a trust badge confirming all numbers are pandas-verified.
+
+**Landing Page with Product Preview** — A SaaS-style landing page with a split hero layout, embedded product mockup, pipeline visualization, and one-click access to a sample dataset. Users see what the product does before loading any data.
 
 ---
 
@@ -46,7 +44,7 @@ Insight Copilot solves all three by separating concerns: deterministic computati
 | Notebook + pandas | Manual code per dataset | Code cells | Manual |
 | **Insight Copilot** | Pandas templates, auto-selected | Every insight → Evidence object | Semantic role detection |
 
-The architecture mirrors how production AI analytics systems (Palantir Foundry, Hex, Mode) separate computation from presentation — but scoped to a demonstrable portfolio project.
+The architecture follows a production-oriented AI analytics pattern: separating deterministic computation from AI-generated explanation to improve reliability and trust.
 
 ---
 
@@ -63,7 +61,7 @@ CSV Upload
 
 ```
                          ┌─────────────────────────────────────────────┐
-                         │              React + TypeScript              │
+                         │              React + TypeScript             │
                          │  ┌───────────┬──────────────┬────────────┐  │
                          │  │   Data    │   Insight    │  Evidence  │  │
                          │  │  Context  │    Feed      │   Panel    │  │
@@ -71,29 +69,29 @@ CSV Upload
                          └──────────────────┬──────────────────────────┘
                                             │ REST API
                          ┌──────────────────▼──────────────────────────┐
-                         │              FastAPI Backend                  │
-                         │                                              │
+                         │              FastAPI Backend                │
+                         │                                             │
   ┌───────────┐          │  ┌─────────────┐    ┌──────────────────┐    │
-  │  CSV File │──upload──│─▶│ Deterministic│───▶│    Semantic       │    │
-  └───────────┘          │  │  Profiler    │    │   Classifier     │    │
-                         │  │  (pandas)    │    │   (Claude/Mock)  │    │
+  │  CSV File │──upload──│─▶│Deterministic│───▶│    Semantic      │    │
+  └───────────┘          │  │  Profiler   │    │   Classifier     │    │
+                         │  │  (pandas)   │    │   (Claude/Mock)  │    │
                          │  └─────────────┘    └────────┬─────────┘    │
-                         │                              │               │
+                         │                              │              │
                          │                    ┌─────────▼──────────┐   │
-                         │                    │  Template Registry  │   │
-                         │                    │  ┌───────────────┐  │   │
-                         │                    │  │ revenue_trend  │  │   │
-                         │                    │  │ category_comp  │  │   │
-                         │                    │  │ top_products   │  │   │
-                         │                    │  │ aov_analysis   │  │   │
-                         │                    │  │ repeat_purchase│  │   │
-                         │                    │  └───────────────┘  │   │
+                         │                    │  Template Registry │   │
+                         │                    │  ┌───────────────┐ │   │
+                         │                    │  │ revenue_trend │ │   │
+                         │                    │  │ category_comp │ │   │
+                         │                    │  │ top_products  │ │   │
+                         │                    │  │ aov_analysis  │ │   │
+                         │                    │  │repeat_purchase│ │   │
+                         │                    │  └───────────────┘ │   │
                          │                    └─────────┬──────────┘   │
-                         │                              │               │
+                         │                              │              │
                          │                    ┌─────────▼──────────┐   │
-                         │                    │  Narrator           │   │
-                         │                    │  (Claude/Mock)      │   │
-                         │                    │  Evidence → Insight │   │
+                         │                    │  Narrator          │   │
+                         │                    │  (Claude/Mock)     │   │
+                         │                    │  Evidence → Insight│   │
                          │                    └────────────────────┘   │
                          └─────────────────────────────────────────────┘
 
@@ -114,23 +112,39 @@ The pipeline in sequence:
 
 ## Screenshots
 
+The product tells one story across three views: the landing page shows *what it is*, the pipeline shows *how it works*, and the dashboard — including evidence-linked insights — shows *why you can trust it*.
+
 ### Landing Page
-![Landing Page](docs/landing-page.png)
+![Landing Page](docs/screenshots/landing-page.png)
+
+Purpose: Show the product vision and SaaS-style experience.
+
+### How It Works
+![Pipeline](docs/screenshots/pipeline.png)
+
+Purpose: Explain the data-to-insight workflow.
 
 ### Dashboard Overview
-![Dashboard Overview](docs/dashboard-overview.png)
+![Dashboard Overview](docs/screenshots/dashboard-overview.png)
 
-### Data Profiling
-![Data Profiling](docs/data-profiling.png)
+The workspace combines:
+- dataset understanding
+- generated insights
+- evidence verification
+
+### Semantic Data Profiling
+![Data Profiling](docs/screenshots/data-profiling.png)
 
 ### Evidence-Linked Insights
-![Evidence-Linked Insights](docs/evidence-linked.png)
+![Evidence-Linked Insights](docs/screenshots/evidence-linked.png)
+
+Purpose: Demonstrate the working product.
 
 ---
 
 ## Tech Stack
 
-**Frontend** — React 18, TypeScript, Tailwind CSS, Vite
+**Frontend** — React 18, TypeScript, Tailwind CSS, Vite, responsive SaaS-style landing experience
 
 **Backend** — Python, FastAPI, pandas, Pydantic
 
@@ -147,7 +161,7 @@ The pipeline in sequence:
 **Prerequisites:** Python 3.11+, Node.js 18+
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/insight-copilot.git
+git clone https://github.com/grace056056/insight-copilot.git
 cd insight-copilot
 ```
 
@@ -277,15 +291,17 @@ insight-copilot/
 
 ## Future Improvements
 
-**Feedback loop** — Users rate insights (useful / not useful / wrong). Feedback compiles into a preference summary that re-weights the hypothesis generation prompt, creating a lightweight RLHF-inspired learning loop.
+**Multi-format Data Ingestion** — Support Excel, PDF, and business documents while preserving the evidence-first analysis pipeline.
 
 **Multi-dataset reasoning** — Upload multiple CSVs and analyze relationships across them (e.g., orders + marketing spend → ROI by channel).
 
-**Code execution sandbox** — Let the AI write and execute pandas queries for ad-hoc questions, with output validated against the dataset before display.
+**Persistent business context** — Store profiles and insights across sessions so the system builds a compounding understanding of the business over time.
+
+**Feedback loop** — Users rate insights (useful / not useful / wrong). Feedback compiles into a preference summary that re-weights the hypothesis generation prompt, creating a lightweight RLHF-inspired learning loop.
 
 **Evaluation suite** — Automated scoring of insight quality: numerical accuracy (do insight numbers match evidence?), coverage (are important patterns surfaced?), and actionability (does the recommendation reference specific data?).
 
-**Persistent business context** — Store profiles and insights across sessions so the system builds a compounding understanding of the business over time.
+**Code execution sandbox** — Let the AI write and execute pandas queries for ad-hoc questions, with output validated against the dataset before display.
 
 **Chat panel** — A secondary AI chat interface pre-loaded with the data profile and active insights for follow-up questions.
 
@@ -308,4 +324,4 @@ MIT
 
 ---
 
-Built by [Your Name] · UCI Data Science · 2025
+Built by [Tongyu Wu] · UCI Data Science · 2026
