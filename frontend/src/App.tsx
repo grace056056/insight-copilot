@@ -48,7 +48,7 @@ export default function App() {
               title="Something went wrong"
               description={error ?? "An unexpected error occurred."}
               action={
-                <PrimaryButton onClick={loadSample}>
+                <PrimaryButton onClick={reset}>
                   Try Again
                 </PrimaryButton>
               }

@@ -25,6 +25,7 @@ Interview talking point:
 from __future__ import annotations
 
 import io
+import logging
 
 import numpy as np
 import pandas as pd
@@ -39,6 +40,8 @@ from models.schemas import (
     HealthFlag,
     TopValue,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class UnparsableTableError(ValueError):
@@ -59,11 +62,26 @@ def _read_dataframe(file_content: bytes, filename: str) -> pd.DataFrame:
     operates on the returned DataFrame and never needs to know the source format.
     """
     if filename.lower().endswith(".xlsx"):
-        df = pd.read_excel(
-            io.BytesIO(file_content),
-            nrows=settings.MAX_ROWS_FOR_PROFILING,
-            engine="openpyxl",
-        )
+        try:
+            df = pd.read_excel(
+                io.BytesIO(file_content),
+                nrows=settings.MAX_ROWS_FOR_PROFILING,
+                engine="openpyxl",
+            )
+        except Exception as e:
+            # openpyxl raises a wide, unpredictable range of low-level errors
+            # for invalid/corrupted/non-standard workbooks (bad zip structure,
+            # unexpected style objects, malformed XML, etc). None of that is
+            # meaningful to an end user — log it for developers and surface a
+            # single clean message instead of the raw exception text.
+            logger.warning(
+                "Failed to parse .xlsx file %r: %s", filename, e, exc_info=True
+            )
+            raise UnparsableTableError(
+                "Unable to read this Excel file. Please make sure it is a "
+                "standard Excel table with a header row and data rows, then "
+                "try uploading again."
+            ) from e
         # openpyxl/pandas happily "succeed" on a sheet with no header row or
         # no data rows (empty sheet, title-only sheet, images-only sheet),
         # returning a degenerate 0-row and/or 0-column DataFrame instead of
