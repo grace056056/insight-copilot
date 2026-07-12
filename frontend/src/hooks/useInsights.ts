@@ -6,7 +6,7 @@
  *   + manual role overrides → re-run insights
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import type { DataProfile, Insight, SemanticRole } from "../types";
 import {
   loadSampleDataset,
@@ -39,15 +39,25 @@ export function useInsights() {
   const selectedInsight =
     state.insights.find((i) => i.id === state.selectedInsightId) ?? null;
 
+  // Generation counter guarding against stale async responses: each async
+  // action captures the id current at its start, and only applies its
+  // results if that id is still current. reset() bumps it, which silently
+  // invalidates any upload/sample-load/override request still in flight —
+  // so a Home click always wins over a request that finishes later.
+  const requestIdRef = useRef(0);
+
   /** Load sample dataset and generate insights. */
   const loadSample = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
     try {
       setState((s) => ({ ...s, stage: "loading", error: null, hasManualOverrides: false }));
 
       const { profile } = await loadSampleDataset();
+      if (requestIdRef.current !== requestId) return;
       setState((s) => ({ ...s, stage: "analyzing", profile }));
 
       const { insights } = await generateInsights();
+      if (requestIdRef.current !== requestId) return;
       setState((s) => ({
         ...s,
         stage: "ready",
@@ -55,6 +65,7 @@ export function useInsights() {
         selectedInsightId: insights[0]?.id ?? null,
       }));
     } catch (err) {
+      if (requestIdRef.current !== requestId) return;
       setState((s) => ({
         ...s,
         stage: "error",
@@ -65,13 +76,16 @@ export function useInsights() {
 
   /** Upload a CSV file and generate insights. */
   const upload = useCallback(async (file: File) => {
+    const requestId = ++requestIdRef.current;
     try {
       setState((s) => ({ ...s, stage: "loading", error: null, hasManualOverrides: false }));
 
       const { profile } = await uploadFile(file);
+      if (requestIdRef.current !== requestId) return;
       setState((s) => ({ ...s, stage: "analyzing", profile }));
 
       const { insights } = await generateInsights();
+      if (requestIdRef.current !== requestId) return;
       setState((s) => ({
         ...s,
         stage: "ready",
@@ -79,6 +93,7 @@ export function useInsights() {
         selectedInsightId: insights[0]?.id ?? null,
       }));
     } catch (err) {
+      if (requestIdRef.current !== requestId) return;
       setState((s) => ({
         ...s,
         stage: "error",
@@ -90,13 +105,16 @@ export function useInsights() {
   /** Apply manual role overrides, update backend profile, re-run insights. */
   const applyRoleOverrides = useCallback(
     async (overrides: { name: string; semantic_role: SemanticRole }[]) => {
+      const requestId = ++requestIdRef.current;
       try {
         setState((s) => ({ ...s, stage: "analyzing", error: null }));
 
         const { profile } = await updateRoles(overrides);
+        if (requestIdRef.current !== requestId) return;
         setState((s) => ({ ...s, profile, hasManualOverrides: true }));
 
         const { insights } = await generateInsights();
+        if (requestIdRef.current !== requestId) return;
         setState((s) => ({
           ...s,
           stage: "ready",
@@ -104,6 +122,7 @@ export function useInsights() {
           selectedInsightId: insights[0]?.id ?? null,
         }));
       } catch (err) {
+        if (requestIdRef.current !== requestId) return;
         setState((s) => ({
           ...s,
           stage: "ready",
@@ -121,6 +140,9 @@ export function useInsights() {
 
   /** Return to landing page, clearing all state. */
   const reset = useCallback(() => {
+    // Invalidate any in-flight loadSample/upload/applyRoleOverrides request
+    // so its response is ignored if it resolves after this reset.
+    requestIdRef.current += 1;
     setState({
       stage: "landing",
       profile: null,
