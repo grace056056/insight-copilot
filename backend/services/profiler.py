@@ -41,6 +41,13 @@ from models.schemas import (
 )
 
 
+class UnparsableTableError(ValueError):
+    """Raised when an uploaded file parses without a low-level error but
+    doesn't yield a standard tabular shape (e.g. an Excel sheet with no
+    header row or no data rows). Caught in routers/upload.py and surfaced
+    as a 400, distinct from generic parse failures."""
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -52,11 +59,23 @@ def _read_dataframe(file_content: bytes, filename: str) -> pd.DataFrame:
     operates on the returned DataFrame and never needs to know the source format.
     """
     if filename.lower().endswith(".xlsx"):
-        return pd.read_excel(
+        df = pd.read_excel(
             io.BytesIO(file_content),
             nrows=settings.MAX_ROWS_FOR_PROFILING,
             engine="openpyxl",
         )
+        # openpyxl/pandas happily "succeed" on a sheet with no header row or
+        # no data rows (empty sheet, title-only sheet, images-only sheet),
+        # returning a degenerate 0-row and/or 0-column DataFrame instead of
+        # raising. Catch that here so it fails clearly at upload time rather
+        # than surfacing as a confusing error deeper in the pipeline.
+        if df.shape[0] == 0 or df.shape[1] == 0:
+            raise UnparsableTableError(
+                "Could not parse this Excel file as a standard table. "
+                "Please make sure the first sheet contains a header row "
+                "and row-based data."
+            )
+        return df
     return pd.read_csv(
         io.BytesIO(file_content),
         nrows=settings.MAX_ROWS_FOR_PROFILING,

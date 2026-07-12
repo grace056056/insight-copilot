@@ -27,7 +27,7 @@ from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from config import settings
 from models.schemas import DataProfile, UploadResponse
-from services.profiler import profile_csv
+from services.profiler import UnparsableTableError, profile_csv
 from services.semantic import classify_columns
 
 router = APIRouter(tags=["upload"])
@@ -89,6 +89,8 @@ async def upload_file(file: UploadFile = File(...)):
     # --- Run deterministic profiler ---
     try:
         profile, df = profile_csv(content, file.filename)
+    except UnparsableTableError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(
             status_code=422,
