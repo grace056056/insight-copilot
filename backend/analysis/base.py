@@ -84,11 +84,20 @@ class AnalysisTemplate(ABC):
         computation. The template says "I need the revenue column" and
         this method returns "total_amount" (or whatever the column is
         actually named in this dataset).
+
+        Returns the first matching column. If a dataset can plausibly have
+        more than one column sharing a role (e.g. both a product_id and a
+        product_name column are "product"), use get_columns() instead and
+        pick explicitly rather than relying on column order.
         """
         for col in profile.columns:
             if col.semantic_role == role:
                 return col.name
         return None
+
+    def get_columns(self, profile: DataProfile, role: SemanticRole) -> list[str]:
+        """Find all column names classified with a given semantic role."""
+        return [col.name for col in profile.columns if col.semantic_role == role]
 
     @abstractmethod
     def execute(self, df: pd.DataFrame, profile: DataProfile) -> Evidence:

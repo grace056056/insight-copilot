@@ -19,6 +19,32 @@ import pandas as pd
 from analysis.base import AnalysisTemplate
 from models.schemas import ChartType, DataProfile, Evidence, SemanticRole
 
+# The semantic classifier has a single "product" role — a dataset with both
+# a product_id and a product_name column gets both classified as "product".
+# These keywords decide which one is actually useful to show in a ranking.
+_PREFERRED_PRODUCT_KEYWORDS = ["name", "title", "description", "product_name", "产品名称"]
+_AVOIDED_PRODUCT_KEYWORDS = ["id", "code", "sku", "编号", "产品id"]
+
+
+def _select_product_column(candidates: list[str]) -> str:
+    """
+    Pick the most human-readable column among those sharing the "product"
+    semantic role.
+
+    Prefers a name/title/description-like column. If none exists, falls
+    back to any column that isn't obviously an identifier. Only resorts to
+    an id/code/sku-like column (e.g. product_id) if nothing else is available.
+    """
+    preferred = [c for c in candidates if any(kw in c.lower() for kw in _PREFERRED_PRODUCT_KEYWORDS)]
+    if preferred:
+        return preferred[0]
+
+    acceptable = [c for c in candidates if not any(kw in c.lower() for kw in _AVOIDED_PRODUCT_KEYWORDS)]
+    if acceptable:
+        return acceptable[0]
+
+    return candidates[0]
+
 
 class TopProductsTemplate(AnalysisTemplate):
     name = "top_products"
@@ -30,7 +56,7 @@ class TopProductsTemplate(AnalysisTemplate):
 
     def execute(self, df: pd.DataFrame, profile: DataProfile) -> Evidence:
         rev_col = self.get_column(profile, SemanticRole.REVENUE)
-        prod_col = self.get_column(profile, SemanticRole.PRODUCT)
+        prod_col = _select_product_column(self.get_columns(profile, SemanticRole.PRODUCT))
         qty_col = self.get_column(profile, SemanticRole.QUANTITY)
 
         # Aggregate by product
