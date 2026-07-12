@@ -24,7 +24,9 @@ Insight Copilot solves all three by separating concerns: deterministic computati
 
 ## Key Features
 
-**Two-Stage Data Profiling** — When a CSV is uploaded, a pandas-based profiler computes exact statistics (dtypes, distributions, nulls, cardinality, date ranges). Then an AI classifier assigns semantic business roles to each column (revenue, customer_id, category, date, etc.) using the statistical profile — not raw data. Supports both English and Chinese column-name semantic mapping.
+**Multi-format Data Ingestion** — Users can upload CSV, TSV, and Excel (.xlsx) files. The ingestion layer validates and parses files into pandas DataFrames before passing them into the same evidence-first analysis pipeline.
+
+**Two-Stage Data Profiling** — After upload, a pandas-based profiler computes exact statistics (dtypes, distributions, nulls, cardinality, date ranges). Then an AI classifier assigns semantic business roles to each column using the statistical profile — not raw data. Supports both English and Chinese column-name semantic mapping.
 
 **Evidence-Linked Insights** — Every insight carries a typed `Evidence` object containing the template that produced it, the exact data slice, chart metadata, and a description of the computation. The LLM receives these pre-computed evidence objects and writes narratives constrained to the numbers inside them, so it cannot hallucinate figures because it never computes them. The frontend renders each insight as an expandable audit trail with supporting data tables.
 
@@ -72,7 +74,7 @@ CSV Upload
                          │              FastAPI Backend                │
                          │                                             │
   ┌───────────┐          │  ┌─────────────┐    ┌──────────────────┐    │
-  │  CSV File │──upload──│─▶│Deterministic│───▶│    Semantic      │    │
+  │ Data file │──upload──│─▶│Deterministic│───▶│    Semantic      │    │
   └───────────┘          │  │  Profiler   │    │   Classifier     │    │
                          │  │  (pandas)   │    │   (Claude/Mock)  │    │
                          │  └─────────────┘    └────────┬─────────┘    │
@@ -101,7 +103,7 @@ CSV Upload
 
 The pipeline in sequence:
 
-1. **Upload** → CSV is parsed, pandas computes column statistics (dtype, min/max/mean, cardinality, nulls)
+1. **Upload** → CSV, TSV, or Excel files are parsed into pandas DataFrames. The profiler computes column statistics (dtype, min/max/mean, cardinality, nulls).
 2. **Semantic Profiling** → Statistical profile (not raw data) is sent to Claude, which classifies columns into business roles: `total_amount → revenue`, `order_date → date`, `customer_id → customer_id`. A rule-based mock classifier supports development without an API key and handles both English and Chinese column names.
 3. **Template Selection** → Registry filters analysis templates to those whose required semantic roles exist in the dataset
 4. **Evidence Computation** → Selected templates run pandas aggregations, producing typed `Evidence` objects with exact numbers
@@ -188,7 +190,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173). The landing page loads first — click **Try Sample Dataset** to see the full pipeline in action.
+Open [http://localhost:5173](http://localhost:5173). The landing page loads first — click **Try Sample Dataset** or upload your own CSV, TSV, or Excel file.
 
 The Vite dev server proxies `/api` requests to the backend automatically.
 
@@ -199,7 +201,7 @@ The Vite dev server proxies `/api` requests to the backend automatically.
 | Method | Endpoint | Description |
 |---|---|---|
 | `GET` | `/api/health` | Health check |
-| `POST` | `/api/upload` | Upload CSV, returns `DataProfile` with semantic roles |
+| `POST` | `/api/upload` | Upload CSV, TSV, or XLSX files, returns `DataProfile` with semantic roles |
 | `GET` | `/api/sample-dataset` | Load built-in e-commerce dataset |
 | `GET` | `/api/templates` | List analysis templates and which can run |
 | `POST` | `/api/evidence` | Run templates, return raw `Evidence[]` |
@@ -291,7 +293,7 @@ insight-copilot/
 
 ## Future Improvements
 
-**Multi-format Data Ingestion** — Support Excel, PDF, and business documents while preserving the evidence-first analysis pipeline.
+**Multi-format Data Ingestion** — Support PDF, and business documents while preserving the evidence-first analysis pipeline.
 
 **Multi-dataset reasoning** — Upload multiple CSVs and analyze relationships across them (e.g., orders + marketing spend → ROI by channel).
 
@@ -310,6 +312,7 @@ insight-copilot/
 ## Resume Bullet Points
 
 - Built an AI analytics platform that separates deterministic computation (pandas) from LLM narration, ensuring numerical accuracy in business insights through typed evidence objects and structured output validation
+- Built a multi-format ingestion pipeline supporting CSV, TSV, and Excel (.xlsx) files with validation and graceful error handling for malformed uploads
 - Designed a two-stage data profiling pipeline: statistical profiling via pandas feeds an LLM semantic classifier that maps columns to a business ontology with English and Chinese column-name support, reducing token usage by 98% versus sending raw data
 - Implemented an analysis template registry using the Strategy pattern, enabling auto-selection of applicable analyses based on dataset capabilities without hardcoded column assumptions
 - Built structured output validation with automatic retry and graceful fallback, handling LLM non-determinism without service degradation
