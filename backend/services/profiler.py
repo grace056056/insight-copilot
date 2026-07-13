@@ -97,6 +97,9 @@ def _read_dataframe(file_content: bytes, filename: str) -> pd.DataFrame:
     return pd.read_csv(
         io.BytesIO(file_content),
         nrows=settings.MAX_ROWS_FOR_PROFILING,
+        # .tsv files are tab-delimited; the default comma separator would
+        # collapse every row into a single column.
+        sep="\t" if filename.lower().endswith(".tsv") else ",",
     )
 
 

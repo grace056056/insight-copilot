@@ -1,28 +1,42 @@
 /**
- * LandingPage
+ * LandingPage — "the meeting point between human decision-making and
+ * machine intelligence."
  *
- * Faithful implementation of the approved "Insight Copilot" landing design
- * (see docs/design-reference). Four full-viewport, scroll-snapped stories —
- * Hero, Pipeline (Workflow), Evidence, and Final CTA — rendered inside App's
- * scroll area. The visual system (Bricolage Grotesque display type, Instrument
- * Serif italic kickers, layered card mockup, grain + deep radial gradients,
- * floating badges, right-rail scroll dots) is ported verbatim from the design.
+ * Visual direction (from the approved reference): a dark, minimal,
+ * futuristic surface built on a wireframe + thermal visual language.
+ * The hero recreates the reference image — a wireframe machine hand
+ * reaching toward a thermal-imaged human hand, fingertips almost
+ * touching, a spark of light at the gap. The same duality carries
+ * through the page: wireframe geometry, mono telemetry and glowing
+ * connections stand for the machine; thermal color and serif italics
+ * stand for the human.
  *
- * All product functionality is preserved: the primary buttons load the sample
- * dataset (onLoadSample) and the ghost buttons open the CSV file picker
- * (onUpload). Only presentation changed.
+ * The page is a spatial, cinematic experience built from CSS 3D
+ * transforms and SVG (no WebGL): the hands glide toward each other on
+ * load, separate as you scroll, and tilt in depth with the cursor;
+ * energy particles travel the connection arcs; sections rise and unfold
+ * from depth as they enter the viewport; cards lean toward the cursor;
+ * pipeline connectors carry traveling light pulses. Motion stays
+ * restrained and honors prefers-reduced-motion throughout.
+ *
+ * All product functionality is preserved: primary buttons load the
+ * sample dataset (onLoadSample); ghost buttons open the file picker;
+ * and the whole page accepts drag-and-drop uploads (onUpload) for
+ * .csv, .tsv and .xlsx files.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { LogoMark } from "../shared";
 
 const GITHUB_URL = "https://github.com/grace056056/insight-copilot";
 
-/* Grain texture — SVG fractal noise as a self-contained data URI (no asset
-   download), tiled at 180px to match the design's grain density. */
+const ACCEPTED_EXTENSIONS = [".csv", ".tsv", ".xlsx"];
+
+/* Grain texture — SVG fractal noise as a self-contained data URI. */
 const GRAIN_URI =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E";
 
-/* ─── Interactive evidence claim datasets (from the design reference) ─── */
+/* ─── Interactive evidence claim datasets ─── */
 
 type Claim = {
   text: React.ReactNode;
@@ -106,10 +120,10 @@ const claims: Claim[] = [
   },
 ];
 
-/* ─── Pipeline nodes & feature cards (from the design reference) ─── */
+/* ─── Pipeline nodes & feature cards ─── */
 
 const pipelineNodes = [
-  { idx: "01", label: "Upload", caption: "CSV or sample", glyph: "↑", color: "#818cf8", rgb: "129,140,248" },
+  { idx: "01", label: "Upload", caption: "csv · tsv · xlsx", glyph: "↑", color: "#818cf8", rgb: "129,140,248" },
   { idx: "02", label: "Profile", caption: "column statistics", glyph: "▤", color: "#38bdf8", rgb: "56,189,248" },
   { idx: "03", label: "Classify", caption: "semantic roles", glyph: "◈", color: "#a78bfa", rgb: "167,139,250" },
   { idx: "04", label: "Compute", caption: "pandas evidence", glyph: "∑", color: "#34d399", rgb: "52,211,153" },
@@ -120,10 +134,10 @@ const featureCards = [
   { glyph: "▦", title: "Semantic Profiling", body: "Detects column types and assigns business roles — revenue, customer_id, category, date.", color: "#818cf8", rgb: "129,140,248" },
   { glyph: "▤", title: "Deterministic Evidence", body: "Five analysis templates compute exact numbers with pandas — never hallucinated.", color: "#34d399", rgb: "52,211,153" },
   { glyph: "⚡", title: "AI-Powered Narratives", body: "An AI narrator reads the computed evidence and writes the story — it can't invent the numbers.", color: "#fbbf24", rgb: "251,191,36" },
-  { glyph: "◆", title: "Evidence-Linked Trust", body: "Every insight links to the exact computation, source table, and pandas-verified numbers.", color: "#22d3ee", rgb: "6,182,212" },
+  { glyph: "◆", title: "Evidence-Linked Trust", body: "Every insight links to the exact computation, source table, and pandas-verified numbers.", color: "#22d3ee", rgb: "34,211,238" },
 ];
 
-/* ─── Inline icons (paths from the design reference) ─── */
+/* ─── Inline icons ─── */
 
 const I = {
   lightning: "M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z",
@@ -154,6 +168,199 @@ function GithubGlyph({ size = 14 }: { size?: number }) {
   );
 }
 
+/* ─── The hands scene ───
+   A stylized recreation of the reference: on the left, a machine hand
+   drawn as a wireframe mesh; on the right, a human hand rendered in
+   thermal-imaging color; between them, the spark where they nearly
+   touch. Parallax offsets are passed in from the hero's mouse tracker. */
+
+const MACHINE_HAND =
+  "M10 178 C80 162, 170 152, 238 158 C310 166, 380 184, 424 196 C436 200, 436 211, 423 213 C372 210, 306 206, 256 210 C312 218, 362 226, 392 236 C401 241, 398 251, 386 250 C344 244, 296 236, 254 232 C296 242, 330 252, 350 262 C357 268, 352 277, 341 274 C306 264, 270 254, 244 250 C272 262, 292 272, 302 282 C307 289, 299 296, 289 292 C254 278, 216 270, 182 268 C130 268, 66 268, 10 262 Z";
+
+const HUMAN_HAND =
+  "M880 118 C806 128, 734 148, 678 174 C616 190, 532 200, 474 205 C463 207, 463 219, 475 220 C532 219, 606 215, 656 217 C625 234, 604 247, 597 259 C595 268, 604 272, 613 266 C636 250, 659 237, 680 230 C657 251, 644 266, 642 277 C642 285, 652 287, 659 281 C678 262, 699 247, 718 238 C703 259, 696 272, 699 280 C702 288, 712 288, 718 280 C732 259, 751 242, 772 231 C806 214, 846 202, 880 198 Z";
+
+const ARC_TOP = "M300 130 C400 96, 520 100, 630 132";
+const ARC_BOTTOM = "M290 300 C400 336, 520 332, 640 296";
+
+function HandsScene({
+  px = 0,
+  py = 0,
+  spread = 0,
+  energy = 1,
+  slow = false,
+  compact = false,
+}: {
+  px?: number;
+  py?: number;
+  /** 0 = fingertips nearly touching, 1 = hands pulled apart */
+  spread?: number;
+  /** 0..1 — intensity of the spark and connection arcs */
+  energy?: number;
+  /** true during the opening approach — hands glide, not snap */
+  slow?: boolean;
+  compact?: boolean;
+}) {
+  const handTransition = slow
+    ? "transform 3s cubic-bezier(0.22, 1, 0.36, 1)"
+    : "transform 0.45s cubic-bezier(0.22, 1, 0.36, 1)";
+  return (
+    <div
+      className="hands-scene"
+      style={compact ? { maxWidth: 460, margin: "0 auto" } : undefined}
+    >
+      <svg
+        viewBox="0 0 900 400"
+        fill="none"
+        style={{ width: "100%", height: "auto", overflow: "visible" }}
+        aria-hidden="true"
+      >
+        <defs>
+          {/* Wireframe mesh pattern for the machine hand */}
+          <pattern id="hs-mesh" width="15" height="15" patternUnits="userSpaceOnUse" patternTransform="rotate(6)">
+            <path d="M15 0H0V15" fill="none" stroke="rgba(165,196,253,0.55)" strokeWidth="0.7" />
+          </pattern>
+          {/* Thermal body gradient for the human hand */}
+          <linearGradient id="hs-thermal-base" x1="1" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#1d4ed8" />
+            <stop offset="42%" stopColor="#6d28d9" />
+            <stop offset="100%" stopColor="#a21caf" />
+          </linearGradient>
+          <clipPath id="hs-human-clip">
+            <path d={HUMAN_HAND} />
+          </clipPath>
+          <radialGradient id="hs-spark" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0%" stopColor="#ffffff" />
+            <stop offset="30%" stopColor="#fef3c7" stopOpacity="0.9" />
+            <stop offset="65%" stopColor="#818cf8" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#818cf8" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+
+        {/* Connection arcs between the two hands — data flowing both ways.
+            Brightness follows energy: as the fingertips close, the link wakes. */}
+        <g className="hs-arcs" style={{ opacity: 0.25 + energy * 0.55, transition: "opacity 0.8s ease" }}>
+          <path
+            d={ARC_TOP}
+            stroke="rgba(99,102,241,0.35)"
+            strokeWidth="1"
+            strokeDasharray="3 9"
+            className="animate-dash"
+          />
+          <path
+            d={ARC_BOTTOM}
+            stroke="rgba(34,211,238,0.28)"
+            strokeWidth="1"
+            strokeDasharray="3 9"
+            className="animate-dash"
+          />
+          {/* Energy particles traveling the arcs */}
+          <circle r="2" fill="#a5b4fc" style={{ filter: "drop-shadow(0 0 4px #818cf8)" }}>
+            <animateMotion dur="3.6s" repeatCount="indefinite" path={ARC_TOP} />
+          </circle>
+          <circle r="1.6" fill="#67e8f9" style={{ filter: "drop-shadow(0 0 4px #22d3ee)" }}>
+            <animateMotion dur="4.4s" repeatCount="indefinite" path={ARC_BOTTOM} keyPoints="1;0" keyTimes="0;1" calcMode="linear" />
+          </circle>
+          <circle r="1.3" fill="#fbbf24" style={{ filter: "drop-shadow(0 0 4px #fbbf24)" }}>
+            <animateMotion dur="5.2s" repeatCount="indefinite" begin="1.4s" path={ARC_TOP} keyPoints="1;0" keyTimes="0;1" calcMode="linear" />
+          </circle>
+        </g>
+
+        {/* ── Machine hand (wireframe) — reaches from the left ── */}
+        <g
+          style={{
+            transform: `translate(${px * -7 - spread * 52}px, ${py * -5}px)`,
+            transition: handTransition,
+          }}
+        >
+          <path d={MACHINE_HAND} fill="rgba(23,37,84,0.35)" />
+          <path d={MACHINE_HAND} fill="url(#hs-mesh)" />
+          {/* Inner contour lines — pseudo 3D mesh depth */}
+          <path
+            d={MACHINE_HAND}
+            fill="none"
+            stroke="rgba(147,197,253,0.35)"
+            strokeWidth="0.8"
+            transform="translate(218 214) scale(0.92) translate(-218 -214)"
+          />
+          <path
+            d={MACHINE_HAND}
+            fill="none"
+            stroke="rgba(147,197,253,0.22)"
+            strokeWidth="0.8"
+            transform="translate(218 214) scale(0.8) translate(-218 -214)"
+          />
+          {/* Outline glow */}
+          <path
+            d={MACHINE_HAND}
+            fill="none"
+            stroke="#bfdbfe"
+            strokeWidth="1.4"
+            style={{ filter: "drop-shadow(0 0 6px rgba(147,197,253,0.65))" }}
+          />
+        </g>
+
+        {/* ── Human hand (thermal) — reaches from the right ── */}
+        <g
+          style={{
+            transform: `translate(${px * 7 + spread * 52}px, ${py * 5}px)`,
+            transition: handTransition,
+          }}
+        >
+          <path
+            d={HUMAN_HAND}
+            fill="url(#hs-thermal-base)"
+            style={{ filter: "drop-shadow(0 0 10px rgba(124,58,237,0.5))" }}
+          />
+          {/* Thermal hotspots, clipped to the hand silhouette */}
+          <g clipPath="url(#hs-human-clip)">
+            <ellipse cx="700" cy="205" rx="150" ry="52" fill="rgba(249,115,22,0.75)" style={{ filter: "blur(26px)" }} />
+            <ellipse cx="760" cy="195" rx="80" ry="30" fill="rgba(250,204,21,0.85)" style={{ filter: "blur(18px)" }} />
+            <ellipse cx="545" cy="212" rx="70" ry="16" fill="rgba(244,114,182,0.55)" style={{ filter: "blur(14px)" }} />
+            <ellipse cx="655" cy="255" rx="60" ry="24" fill="rgba(217,70,239,0.5)" style={{ filter: "blur(16px)" }} />
+          </g>
+          {/* Cold edge highlight */}
+          <path
+            d={HUMAN_HAND}
+            fill="none"
+            stroke="rgba(96,165,250,0.9)"
+            strokeWidth="1.3"
+            style={{ filter: "drop-shadow(0 0 6px rgba(59,130,246,0.6))" }}
+          />
+        </g>
+
+        {/* ── The spark — where machine meets human.
+              It surges as the fingertips close and dims as they part. ── */}
+        <g
+          className="animate-pulse-glow"
+          style={{
+            transform: `translate(${px * 2}px, ${py * 2}px)`,
+            transition: "transform 0.35s cubic-bezier(0.22,1,0.36,1)",
+          }}
+        >
+          <g
+            style={{
+              opacity: 0.25 + energy * 0.75,
+              transform: `scale(${0.7 + energy * 0.4})`,
+              transformOrigin: "452px 211px",
+              transition: "opacity 1.2s ease, transform 1.2s ease",
+            }}
+          >
+            <circle cx="452" cy="211" r="34" fill="url(#hs-spark)" />
+            <circle cx="452" cy="211" r="2.4" fill="#ffffff" />
+            <path d="M452 195v-9M452 227v9M436 211h-9M468 211h9" stroke="rgba(255,255,255,0.55)" strokeWidth="1" strokeLinecap="round" />
+            {/* Expanding contact ripple */}
+            <circle cx="452" cy="211" fill="none" stroke="rgba(165,180,252,0.5)" strokeWidth="1">
+              <animate attributeName="r" values="4;30" dur="2.6s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0.7;0" dur="2.6s" repeatCount="indefinite" />
+            </circle>
+          </g>
+        </g>
+      </svg>
+    </div>
+  );
+}
+
 /* ─── Component ─── */
 
 export function LandingPage({
@@ -171,6 +378,10 @@ export function LandingPage({
   const [active, setActive] = useState(0);
   const [claim, setClaim] = useState(0);
 
+  /* Scroll tracking: right-rail dots + hero scroll progress (0..1).
+     heroT drives the hands' separation and the hero's depth recession,
+     so scrolling physically pulls the meeting point apart. */
+  const [heroT, setHeroT] = useState(0);
   useEffect(() => {
     const page = pageRef.current;
     if (!page) return;
@@ -181,10 +392,50 @@ export function LandingPage({
         if (el && el.offsetTop <= mid) idx = i;
       });
       setActive(idx);
+      setHeroT(Math.min(page.scrollTop / (page.clientHeight * 0.85), 1));
     };
     onScroll();
     page.addEventListener("scroll", onScroll, { passive: true });
     return () => page.removeEventListener("scroll", onScroll);
+  }, []);
+
+  /* Reveal-on-scroll: elements marked .rv rise and unfold from depth
+     the first time they enter the viewport. */
+  useEffect(() => {
+    const page = pageRef.current;
+    if (!page) return;
+    const els = Array.from(page.querySelectorAll<HTMLElement>(".rv"));
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((en) => {
+          if (en.isIntersecting) {
+            en.target.classList.add("in");
+            io.unobserve(en.target);
+          }
+        });
+      },
+      { threshold: 0.18 }
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, []);
+
+  /* Opening shot: the hands start apart and glide toward each other over
+     ~3s, then motion control hands off to cursor + scroll. */
+  const [arrived, setArrived] = useState(false);
+  const [approachDone, setApproachDone] = useState(false);
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setArrived(true);
+      setApproachDone(true);
+      return;
+    }
+    const t1 = window.setTimeout(() => setArrived(true), 350);
+    const t2 = window.setTimeout(() => setApproachDone(true), 3600);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
   }, []);
 
   const goTo = useCallback((i: number) => {
@@ -193,16 +444,91 @@ export function LandingPage({
     if (el && page) page.scrollTo({ top: el.offsetTop, behavior: "smooth" });
   }, []);
 
+  /* ── Restrained mouse parallax on the hero scene ── */
+  const [par, setPar] = useState({ x: 0, y: 0 });
+  const reducedMotion = useRef(false);
+  useEffect(() => {
+    reducedMotion.current = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+  }, []);
+  const onHeroMove = useCallback((e: React.MouseEvent<HTMLElement>) => {
+    if (reducedMotion.current) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    setPar({
+      x: ((e.clientX - rect.left) / rect.width) * 2 - 1,
+      y: ((e.clientY - rect.top) / rect.height) * 2 - 1,
+    });
+  }, []);
+  const onHeroLeave = useCallback(() => setPar({ x: 0, y: 0 }), []);
+
+  /* 3D hover tilt for landing cards/panels — leans toward the cursor. */
+  const tiltMove = useCallback((e: React.MouseEvent<HTMLElement>) => {
+    if (reducedMotion.current) return;
+    const el = e.currentTarget;
+    const r = el.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width - 0.5;
+    const y = (e.clientY - r.top) / r.height - 0.5;
+    el.style.transform = `perspective(900px) rotateY(${(x * 5).toFixed(2)}deg) rotateX(${(-y * 4).toFixed(2)}deg) translateZ(10px)`;
+  }, []);
+  const tiltLeave = useCallback((e: React.MouseEvent<HTMLElement>) => {
+    e.currentTarget.style.transform = "";
+  }, []);
+
+  /* ── Page-level drag & drop upload ── */
+  const [dragging, setDragging] = useState(false);
+  const dragDepth = useRef(0);
+
+  const isAccepted = (name: string) =>
+    ACCEPTED_EXTENSIONS.some((ext) => name.toLowerCase().endsWith(ext));
+
+  const onDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    dragDepth.current += 1;
+    setDragging(true);
+  }, []);
+  const onDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+  }, []);
+  const onDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    dragDepth.current -= 1;
+    if (dragDepth.current <= 0) {
+      dragDepth.current = 0;
+      setDragging(false);
+    }
+  }, []);
+  const onDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      dragDepth.current = 0;
+      setDragging(false);
+      const f = e.dataTransfer.files?.[0];
+      if (f && isAccepted(f.name)) onUpload(f);
+    },
+    [onUpload]
+  );
+
   const c = claims[claim];
 
   return (
-    <div className="iclp" ref={pageRef}>
+    <div
+      className="flp"
+      ref={pageRef}
+      onDragEnter={onDragEnter}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
       <style>{CSS}</style>
 
       {/* Ambient background layers */}
-      <div className="grain-deep" />
+      <div className="bg-glows">
+        <div className="orb o1 animate-drift" />
+        <div className="orb o2 animate-drift" style={{ animationDelay: "-5s" }} />
+      </div>
+      <div className="bg-gridfloor" />
       <div className="grain" style={{ backgroundImage: `url("${GRAIN_URI}")` }} />
-      <div className="seam-blend" />
 
       {/* Shared file input for every Upload Data File button */}
       <input
@@ -216,21 +542,32 @@ export function LandingPage({
         className="hidden"
       />
 
+      {/* Drag & drop overlay */}
+      {dragging && (
+        <div className="dropzone">
+          <div className="drop-frame">
+            <i className="dc tl" /><i className="dc tr" /><i className="dc bl" /><i className="dc br" />
+            <Ico d={I.upload} size={30} stroke="#22d3ee" sw={1.4} />
+            <p className="drop-title">Release to analyze</p>
+            <p className="drop-sub mono">.csv · .tsv · .xlsx</p>
+          </div>
+        </div>
+      )}
+
       {/* ── Nav ── */}
       <nav className="nav">
         <div className="brand">
           <span className="logo">
-            <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
-              <rect x="1" y="8" width="2.5" height="5" rx="0.75" fill="rgba(255,255,255,0.5)" />
-              <rect x="5.25" y="4" width="2.5" height="9" rx="0.75" fill="rgba(255,255,255,0.8)" />
-              <rect x="9.5" y="1" width="2.5" height="12" rx="0.75" fill="white" />
-            </svg>
+            <LogoMark size={23} variant="full" />
           </span>
-          Insight <span className="sec2">Copilot</span>
+          <span className="wordmark">
+            <b>Insight</b>
+            <span className="sec2">Copilot</span>
+          </span>
         </div>
         <div className="navlinks">
           <span className="navlink">Product</span>
-          <span className="navlink" onClick={() => goTo(1)}>Workflow</span>
+          <span className="navlink" onClick={() => goTo(1)}>Pipeline</span>
           <span className="navlink" onClick={() => goTo(2)}>Evidence</span>
           <span className="navlink">Docs</span>
           <span className="navlink">Pricing</span>
@@ -258,14 +595,25 @@ export function LandingPage({
       </div>
 
       {/* ══════════ SECTION 1 · HERO ══════════ */}
-      <section className="sec" ref={(el) => { secRefs.current[0] = el; }}>
-        <div className="glow" style={{ width: 560, height: 480, background: "#4338ca", top: -160, left: -120, opacity: 0.4 }} />
-        <div className="glow" style={{ width: 520, height: 460, background: "#7c3aed", top: "10%", right: -140, opacity: 0.32 }} />
-        <div className="wrap hero-grid">
-          <div>
-            <span className="eyebrow"><span className="dotp" />AI analytics that shows its work</span>
-            <h1 className="h1">Business insights<br />you can <span className="grad">verify</span></h1>
-            <p className="sub">Upload a sales CSV. Get insights backed by exact computations, not AI guesses.</p>
+      <section
+        className="sec hero"
+        ref={(el) => { secRefs.current[0] = el; }}
+        onMouseMove={onHeroMove}
+        onMouseLeave={onHeroLeave}
+      >
+        <div className="wrap hero-inner">
+          <div className="hero-copy">
+            <span className="eyebrow">
+              <span className="dotp" />
+              where human decision meets machine intelligence
+            </span>
+            <h1 className="h1">
+              Business insights<br />you can <span className="grad">verify</span>
+            </h1>
+            <p className="sub">
+              Upload a sales file. The machine computes exact evidence with
+              pandas; the AI only writes the story. You make the call.
+            </p>
             <div className="cta-row">
               <button className="btn btn-pri btn-lg icon-btn" onClick={onLoadSample}>
                 <Ico d={I.lightning} sw={2} /> Try Sample Dataset
@@ -274,6 +622,9 @@ export function LandingPage({
                 <Ico d={I.upload} /> Upload Data File
               </button>
             </div>
+            <p className="drop-hint mono">
+              or drop a <b>.csv</b> / <b>.tsv</b> / <b>.xlsx</b> anywhere on this page
+            </p>
             <div className="trust">
               <div className="trust-i"><Ico d={I.lightning} size={12} /> Deterministic computations</div>
               <div className="trust-i"><Ico d={I.link} size={12} /> Source-backed evidence</div>
@@ -281,65 +632,94 @@ export function LandingPage({
             </div>
           </div>
 
-          {/* Product mockup */}
-          <div className="mock">
-            <div className="float f1"><Ico d={I.check} size={13} stroke="#34d399" sw={2} /> pandas verified</div>
-            <div className="float f2"><Ico d={I.shield} size={13} stroke="#818cf8" /> Evidence linked</div>
-            <div className="float f3"><span className="fd" style={{ background: "#fbbf24" }} /> 5 insights generated</div>
-            <div className="mock-win">
-              <div className="mock-bar">
-                <span className="tdot" style={{ background: "#ff5f57" }} />
-                <span className="tdot" style={{ background: "#febc2e" }} />
-                <span className="tdot" style={{ background: "#28c840" }} />
-                <span className="mono" style={{ marginLeft: 8, fontSize: 9, color: "#586b82" }}>q3_sales.csv</span>
-                <span className="mock-livepill"><span className="mock-livedot" />Live</span>
-              </div>
-              <div className="mock-body">
-                <div className="mock-rail">
-                  <span className="ri active" /><span className="ri" /><span className="ri" /><span className="ri" />
-                </div>
-                <div className="mock-content">
-                  <div className="mock-crumb">
-                    <span>Workspace<span className="sep">/</span><b>q3_sales.csv</b></span>
-                    <span className="mock-search">
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                        <circle cx="11" cy="11" r="7" /><path strokeLinecap="round" d="M21 21l-4.3-4.3" />
-                      </svg>
-                      Ask a question…
-                    </span>
-                  </div>
-                  <div className="mock-simple">
-                    <div className="msrow">
-                      <Ico d={I.upload} size={14} stroke="#818cf8" sw={2} /> Uploaded q3_sales.csv · 48,210 rows
-                    </div>
-                    <div className="mscards">
-                      <div className="mscard"><div className="msl">Total revenue</div><div className="msv">$2.41M</div></div>
-                      <div className="mscard"><div className="msl">Customers analyzed</div><div className="msv">1,372</div></div>
-                    </div>
-                    <div className="msnar">Revenue insights backed by exact pandas computation. Every claim traces back to source data.</div>
-                  </div>
-                </div>
-              </div>
+          {/* The meeting point — a layered 3D stage. The whole scene tilts
+              toward the cursor; scrolling pulls the hands apart and recedes
+              the stage into depth. */}
+          <div
+            className="hero-scene"
+            style={{
+              transform: `translateY(${heroT * 60}px) scale(${1 - heroT * 0.08})`,
+              opacity: 1 - heroT * 0.45,
+            }}
+          >
+            {/* Floating wireframe satellites at different parallax depths */}
+            <div className="fl-el fl-ring" style={{ transform: `translate(${par.x * -16}px, ${par.y * -12}px)` }}>
+              <svg viewBox="0 0 64 64" fill="none" className="animate-spin-slower" style={{ width: "100%", height: "100%" }}>
+                <ellipse cx="32" cy="32" rx="28" ry="10" stroke="rgba(129,140,248,0.4)" strokeWidth="1" strokeDasharray="3 4" />
+                <ellipse cx="32" cy="32" rx="10" ry="28" stroke="rgba(34,211,238,0.3)" strokeWidth="1" strokeDasharray="3 4" />
+              </svg>
+            </div>
+            <div className="fl-el fl-hex animate-drift" style={{ transform: `translate(${par.x * 12}px, ${par.y * 10}px)` }}>
+              <svg viewBox="0 0 40 40" fill="none" className="animate-spin-slow" style={{ width: "100%", height: "100%" }}>
+                <path d="M20 3l14 8v18l-14 8-14-8V11z" stroke="rgba(251,191,36,0.4)" strokeWidth="1" />
+                <path d="M20 11l7 4v10l-7 4-7-4V15z" stroke="rgba(251,113,133,0.35)" strokeWidth="0.8" />
+              </svg>
+            </div>
+            <div className="fl-el fl-orb animate-drift" style={{ animationDelay: "-4s" }} />
+
+            <div
+              style={{
+                transform: `perspective(1100px) rotateY(${(par.x * 5).toFixed(2)}deg) rotateX(${(-par.y * 4).toFixed(2)}deg)`,
+                transition: "transform 0.4s cubic-bezier(0.22,1,0.36,1)",
+                transformStyle: "preserve-3d",
+              }}
+            >
+              <HandsScene
+                px={par.x}
+                py={par.y}
+                spread={arrived ? heroT : 1}
+                energy={arrived ? 1 - heroT : 0}
+                slow={!approachDone}
+              />
+            </div>
+            <div className="scene-labels mono">
+              <span className="sl sl-machine">machine · wireframe</span>
+              <span className="sl sl-human">human · thermal</span>
             </div>
           </div>
         </div>
+
+        {/* Dust field — slow drifting particles at varied depths */}
+        <div className="dust" aria-hidden="true">
+          {Array.from({ length: 26 }, (_, i) => (
+            <span
+              key={i}
+              className="dp"
+              style={{
+                left: `${(i * 37 + 11) % 100}%`,
+                top: `${(i * 53 + 7) % 100}%`,
+                width: 1 + (i % 3),
+                height: 1 + (i % 3),
+                opacity: 0.12 + ((i * 17) % 40) / 100,
+                animationDelay: `${-((i * 29) % 110) / 10}s`,
+                animationDuration: `${9 + ((i * 13) % 70) / 10}s`,
+                transform: `translate(${par.x * (4 + (i % 5) * 3)}px, ${par.y * (3 + (i % 4) * 3)}px)`,
+              }}
+            />
+          ))}
+        </div>
       </section>
 
-      {/* ══════════ SECTION 2 · WORKFLOW / PIPELINE ══════════ */}
+      {/* ══════════ SECTION 2 · PIPELINE ══════════ */}
       <section className="sec" ref={(el) => { secRefs.current[1] = el; }}>
         <div className="wrap">
-          <div className="sec-head">
+          <div className="sec-head rv">
             <div className="kicker">Pipeline</div>
-            <h2 className="sec-title">From raw CSV to verified insight</h2>
+            <h2 className="sec-title">From raw data to verified insight</h2>
             <p className="sec-sub">A deterministic pipeline computes every number before AI writes the story.</p>
           </div>
-          <div className="pipe">
+          <div className="pipe rv">
             {pipelineNodes.map((n) => (
               <div className="pnode" key={n.idx}>
-                <div className="idx">{n.idx}</div>
+                <div className="idx mono">{n.idx}</div>
                 <div
                   className="pico"
-                  style={{ borderColor: `rgba(${n.rgb},.3)`, color: n.color, background: `rgba(${n.rgb},.08)` }}
+                  style={{
+                    borderColor: `rgba(${n.rgb},.35)`,
+                    color: n.color,
+                    background: `rgba(${n.rgb},.07)`,
+                    boxShadow: `0 0 18px -6px rgba(${n.rgb},.45)`,
+                  }}
                 >
                   {n.glyph === "sparkle" ? <Ico d={I.sparkle} size={18} sw={1.5} /> : n.glyph}
                 </div>
@@ -350,9 +730,12 @@ export function LandingPage({
           </div>
           <div className="cards">
             {featureCards.map((f) => (
-              <div className="card" key={f.title}>
-                <span className="bar" style={{ background: f.color }} />
-                <div className="ic" style={{ borderColor: `rgba(${f.rgb},.2)`, color: f.color, background: `rgba(${f.rgb},.1)` }}>
+              <div className="card rv" key={f.title} onMouseMove={tiltMove} onMouseLeave={tiltLeave}>
+                <i className="cc tl" /><i className="cc tr" /><i className="cc bl" /><i className="cc br" />
+                <div
+                  className="ic"
+                  style={{ borderColor: `rgba(${f.rgb},.25)`, color: f.color, background: `rgba(${f.rgb},.08)` }}
+                >
                   {f.glyph}
                 </div>
                 <h4>{f.title}</h4>
@@ -366,14 +749,14 @@ export function LandingPage({
       {/* ══════════ SECTION 3 · EVIDENCE ══════════ */}
       <section className="sec" ref={(el) => { secRefs.current[2] = el; }}>
         <div className="wrap">
-          <div className="sec-head">
+          <div className="sec-head rv">
             <div className="kicker">Evidence-first</div>
             <h2 className="sec-title">Click any claim, see the proof</h2>
             <p className="sec-sub">The AI writes the narrative. Pandas computes the numbers. Every insight traces back to source data.</p>
           </div>
           <div className="ev-loop">
             {/* AI-written insight */}
-            <div className="panel ev-insight">
+            <div className="panel ev-insight rv" onMouseMove={tiltMove} onMouseLeave={tiltLeave}>
               <div className="panel-h" style={{ color: "#818cf8" }}>
                 <Ico d={I.sparkle} size={13} /> AI-written insight
               </div>
@@ -394,7 +777,7 @@ export function LandingPage({
             </div>
 
             {/* pandas evidence */}
-            <div className="panel ev-evidence">
+            <div className="panel ev-evidence rv">
               <div className="panel-h" style={{ color: "#10b981" }}>pandas evidence</div>
               <div className="etable">
                 <div className="ehd"><div>metric</div><div>value</div><div>unit</div></div>
@@ -408,14 +791,14 @@ export function LandingPage({
 
             {/* Arrow connector */}
             <div className="harrow">
-              <span className="hline" />
+              <span className="hline hline2" />
               <svg className="harw" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth={2.25}>
                 <path strokeLinecap="round" strokeLinejoin="round" d={I.arrow} />
               </svg>
             </div>
 
             {/* source rows */}
-            <div className="panel ev-source">
+            <div className="panel ev-source rv" onMouseMove={tiltMove} onMouseLeave={tiltLeave}>
               <div className="panel-h" style={{ color: "#7b8ba2" }}>
                 <Ico d={I.rows} size={13} /> source rows · {c.srcFile}
               </div>
@@ -427,17 +810,17 @@ export function LandingPage({
                   </div>
                 ))}
               </div>
-              <div className="src-foot">
+              <div className="src-foot mono">
                 <Ico d={I.link} size={12} /> <span><b>{c.matchRows}</b> matching rows</span>
               </div>
             </div>
           </div>
 
           {/* Lineage */}
-          <div className="lineage">
+          <div className="lineage rv">
             <div className="ln-node"><span className="ln-dot" style={{ background: "#818cf8" }} />Insight</div>
             <span className="ln-conn" />
-            <div className="ln-node code">{c.code}</div>
+            <div className="ln-node code mono">{c.code}</div>
             <span className="ln-conn" />
             <div className="ln-node"><span className="ln-dot" style={{ background: "#7b8ba2" }} />{c.srcFile}</div>
           </div>
@@ -445,14 +828,14 @@ export function LandingPage({
       </section>
 
       {/* ══════════ SECTION 4 · FINAL CTA ══════════ */}
-      <section className="sec" ref={(el) => { secRefs.current[3] = el; }}>
-        <div className="glow" style={{ width: 760, height: 520, background: "#6366f1", top: "50%", left: "50%", transform: "translate(-50%,-50%)", opacity: 0.2 }} />
-        <div className="glow" style={{ width: 520, height: 360, background: "#7c3aed", top: "38%", left: "32%", transform: "translate(-50%,-50%)", opacity: 0.14 }} />
-        <div className="wrap cta-card">
-          <div className="cta-icon"><Ico d={I.shield} size={24} stroke="#818cf8" sw={1.5} /></div>
+      <section className="sec cta-sec" ref={(el) => { secRefs.current[3] = el; }}>
+        <div className="wrap cta-card rv">
+          <div className="cta-scene">
+            <HandsScene compact />
+          </div>
           <h2 className="cta-h">Insights you can<br />defend in the room</h2>
           <p className="cta-sub">Try the sample dataset, then inspect the evidence behind every insight.</p>
-          <div className="cta-row" style={{ justifyContent: "center", marginTop: 38 }}>
+          <div className="cta-row" style={{ justifyContent: "center", marginTop: 36 }}>
             <button className="btn btn-pri btn-lg icon-btn" onClick={onLoadSample}>
               <Ico d={I.lightning} sw={2} /> Try Sample Dataset
             </button>
@@ -465,6 +848,14 @@ export function LandingPage({
           </div>
         </div>
         <div className="footer">
+          {/* Full brand lockup — the mark at a size where its detail reads */}
+          <div className="footer-brand">
+            <LogoMark size={34} variant="full" />
+            <span className="fb-word">
+              <b>Insight</b> <span>Copilot</span>
+            </span>
+            <span className="fb-tag serif-it">where human decision meets machine intelligence</span>
+          </div>
           <div className="footer-links">
             <a href="#">Privacy</a>
             <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">GitHub</a>
@@ -477,187 +868,227 @@ export function LandingPage({
   );
 }
 
-/* ─── Scoped design CSS (ported from docs/design-reference) ─── */
+/* ─── Scoped design CSS ─── */
 
 const CSS = `
-.iclp{position:relative;height:100%;overflow-y:auto;overflow-x:hidden;background:#0a0d14;scroll-behavior:smooth;scroll-snap-type:y proximity}
-.iclp::-webkit-scrollbar{width:0}
-.iclp *{box-sizing:border-box}
-.iclp .hidden{display:none}
-.iclp .mono{font-family:'JetBrains Mono',monospace}
-.iclp .serif{font-family:'Instrument Serif',Georgia,serif}
-.iclp a{color:#818cf8;text-decoration:none}
-.iclp a:hover{color:#a5b4fc}
+.flp{position:relative;height:100%;overflow-y:auto;overflow-x:hidden;background:#04070d;scroll-behavior:smooth;scroll-snap-type:y proximity}
+.flp::-webkit-scrollbar{width:0}
+.flp *{box-sizing:border-box}
+.flp .hidden{display:none}
+.flp .mono{font-family:'JetBrains Mono',monospace}
+.flp a{color:#818cf8;text-decoration:none}
+.flp a:hover{color:#a5b4fc}
 
-.iclp .grain{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.04;mix-blend-mode:screen;background-size:180px 180px;background-repeat:repeat;filter:grayscale(1) contrast(1.8) brightness(1.1)}
-.iclp .grain-deep{position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse 900px 700px at 10% 6%,rgba(99,102,241,.14),transparent 60%),radial-gradient(ellipse 800px 900px at 90% 28%,rgba(124,58,237,.13),transparent 60%),radial-gradient(ellipse 1100px 800px at 50% 102%,rgba(20,14,42,.5),transparent 65%)}
+/* ── Ambient layers ── */
+.flp .grain{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.035;mix-blend-mode:screen;background-size:180px 180px;background-repeat:repeat;filter:grayscale(1) contrast(1.8) brightness(1.1)}
+.flp .bg-glows{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.flp .orb{position:absolute;border-radius:50%;filter:blur(130px)}
+.flp .orb.o1{width:600px;height:500px;background:rgba(67,56,202,.22);top:-180px;left:-140px}
+.flp .orb.o2{width:540px;height:480px;background:rgba(124,58,237,.16);top:22%;right:-160px}
+.flp .bg-gridfloor{position:fixed;left:-10%;right:-10%;bottom:-8%;height:46%;z-index:0;pointer-events:none;background-image:linear-gradient(rgba(99,102,241,.10) 1px,transparent 1px),linear-gradient(90deg,rgba(99,102,241,.10) 1px,transparent 1px);background-size:52px 52px;transform:perspective(620px) rotateX(63deg);transform-origin:50% 100%;-webkit-mask-image:linear-gradient(180deg,transparent,rgba(0,0,0,.8) 55%,#000);mask-image:linear-gradient(180deg,transparent,rgba(0,0,0,.8) 55%,#000);opacity:.5}
 
-/* Soft ambient blend spanning the Evidence → CTA seam. Lives outside both
-   sections (siblings clip their own glows via overflow:hidden), positioned at
-   the exact section-4 boundary, so the background reads as one continuous
-   surface instead of a hard cut between a flat panel and a glow. */
-.iclp .seam-blend{position:absolute;left:0;right:0;height:320px;top:calc(56px + 3 * (100vh - 56px) - 160px);pointer-events:none;z-index:0;background:radial-gradient(ellipse 70% 100% at 50% 50%,rgba(99,102,241,.14),rgba(124,58,237,.08) 55%,transparent 78%);filter:blur(50px)}
+/* ── Drag & drop overlay ── */
+.flp .dropzone{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:rgba(4,7,13,.82);backdrop-filter:blur(6px)}
+.flp .drop-frame{position:relative;display:flex;flex-direction:column;align-items:center;gap:12px;padding:56px 88px;border:1px dashed rgba(34,211,238,.45);border-radius:18px;background:rgba(34,211,238,.04);box-shadow:0 0 60px -18px rgba(34,211,238,.5)}
+.flp .dc{position:absolute;width:14px;height:14px;border:0 solid rgba(34,211,238,.9)}
+.flp .dc.tl{top:-1px;left:-1px;border-top-width:2px;border-left-width:2px}
+.flp .dc.tr{top:-1px;right:-1px;border-top-width:2px;border-right-width:2px}
+.flp .dc.bl{bottom:-1px;left:-1px;border-bottom-width:2px;border-left-width:2px}
+.flp .dc.br{bottom:-1px;right:-1px;border-bottom-width:2px;border-right-width:2px}
+.flp .drop-title{margin:4px 0 0;font-family:'Bricolage Grotesque',sans-serif;font-size:22px;font-weight:600;color:#dce5f5;letter-spacing:-.01em}
+.flp .drop-sub{font-size:11px;color:#22d3ee;letter-spacing:.18em}
 
-.iclp .sec{position:relative;z-index:1;min-height:calc(100vh - 56px);scroll-snap-align:start;display:flex;flex-direction:column;justify-content:center;padding:56px;overflow:hidden}
-.iclp .wrap{width:100%;max-width:1240px;margin:0 auto}
+/* ── Nav ── */
+.flp .nav{position:sticky;top:0;height:56px;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:rgba(4,7,13,.8);backdrop-filter:blur(14px);border-bottom:1px solid #1a2440;gap:16px}
+.flp .brand{display:flex;align-items:center;gap:12px;white-space:nowrap;font-family:'Bricolage Grotesque',sans-serif}
+.flp .brand .wordmark{display:flex;align-items:baseline;font-size:15.5px;letter-spacing:-.015em}
+.flp .brand .wordmark b{font-weight:700;color:#f2f5fb}
+.flp .brand .sec2{font-weight:500;color:#8195b3;margin-left:5px}
+.flp .logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#141b33,#0c1223);border:1px solid #263455;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 16px rgba(99,102,241,.14),inset 0 1px 0 rgba(255,255,255,.05)}
+.flp .navlinks{display:flex;gap:2px;font-size:13px;color:#8195b3;font-weight:500;align-items:center}
+.flp .navlink{cursor:pointer;transition:color .15s,background .15s;padding:6px 10px;border-radius:8px;white-space:nowrap;color:#8195b3;display:inline-flex;align-items:center;gap:5px}
+.flp .navlink:hover{color:#dce5f5;background:rgba(255,255,255,.04)}
+.flp .githublink{margin-right:4px}
+.flp .navright{display:flex;align-items:center;gap:4px}
+.flp .signin{font-size:13px;color:#8195b3;font-weight:500;cursor:pointer;padding:6px 10px;border-radius:8px;transition:color .15s;white-space:nowrap}
+.flp .signin:hover{color:#dce5f5}
 
-.iclp .nav{position:sticky;top:0;height:56px;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:rgba(10,13,20,.82);backdrop-filter:blur(14px);border-bottom:1px solid #1c2535;gap:16px}
-.iclp .brand{display:flex;align-items:center;gap:10px;font-weight:600;font-size:14px;letter-spacing:-.01em;white-space:nowrap;color:#e4e8ef}
-.iclp .brand .sec2{color:#7b8ba2}
-.iclp .logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#1e2440,#161b2e);border:1px solid #2a3350;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.iclp .navlinks{display:flex;gap:2px;font-size:13px;color:#7b8ba2;font-weight:500;align-items:center}
-.iclp .navlink{cursor:pointer;transition:color .15s,background .15s;padding:6px 10px;border-radius:8px;white-space:nowrap;color:#7b8ba2;display:inline-flex;align-items:center;gap:5px}
-.iclp .navlink:hover{color:#e4e8ef;background:rgba(255,255,255,.04)}
-.iclp .githublink{margin-right:4px}
-.iclp .navright{display:flex;align-items:center;gap:4px}
-.iclp .signin{font-size:13px;color:#7b8ba2;font-weight:500;cursor:pointer;padding:6px 10px;border-radius:8px;transition:color .15s;white-space:nowrap}
-.iclp .signin:hover{color:#e4e8ef}
+/* ── Buttons ── */
+.flp .btn{border:0;cursor:pointer;font-family:inherit;font-weight:600;border-radius:10px;transition:transform .12s,box-shadow .2s,background .2s,border-color .2s;white-space:nowrap}
+.flp .btn.icon-btn{display:inline-flex;align-items:center;gap:9px}
+.flp .btn-pri{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;box-shadow:0 6px 22px -8px rgba(99,102,241,.55)}
+.flp .btn-pri:hover{transform:translateY(-1px);box-shadow:0 10px 30px -8px rgba(99,102,241,.75)}
+.flp .btn-ghost{background:#0a1020;color:#dce5f5;border:1px solid #1a2440}
+.flp .btn-ghost:hover{background:#101830;border-color:#263455;box-shadow:0 0 18px -8px rgba(34,211,238,.4)}
+.flp .btn-sm{padding:7px 16px;font-size:13px}
+.flp .btn-lg{padding:13px 28px;font-size:14.5px}
 
-.iclp .btn{border:0;cursor:pointer;font-family:inherit;font-weight:600;border-radius:10px;transition:transform .12s,box-shadow .2s,background .2s;white-space:nowrap}
-.iclp .btn.icon-btn{display:inline-flex;align-items:center;gap:9px}
-.iclp .btn-pri{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;box-shadow:0 6px 22px -8px rgba(99,102,241,.5)}
-.iclp .btn-pri:hover{transform:translateY(-1px);box-shadow:0 10px 30px -8px rgba(99,102,241,.7)}
-.iclp .btn-ghost{background:#10141e;color:#e4e8ef;border:1px solid #1c2535}
-.iclp .btn-ghost:hover{background:#161c2b;border-color:#283248}
-.iclp .btn-sm{padding:7px 16px;font-size:13px}
-.iclp .btn-lg{padding:13px 28px;font-size:14.5px}
+/* ── Scroll dots ── */
+.flp .dots{position:fixed;right:22px;top:50%;transform:translateY(-50%);z-index:50;display:flex;flex-direction:column;gap:12px}
+.flp .dot{width:7px;height:7px;border-radius:50%;background:#1e2a48;cursor:pointer;transition:all .2s;border:1px solid #263455;padding:0}
+.flp .dot.on{background:#6366f1;border-color:#818cf8;box-shadow:0 0 0 4px rgba(99,102,241,.18),0 0 10px rgba(99,102,241,.6);transform:scale(1.15)}
 
-.iclp .dots{position:fixed;right:22px;top:50%;transform:translateY(-50%);z-index:50;display:flex;flex-direction:column;gap:12px}
-.iclp .dot{width:8px;height:8px;border-radius:50%;background:#283248;cursor:pointer;transition:all .2s;border:0;padding:0}
-.iclp .dot.on{background:#6366f1;box-shadow:0 0 0 4px rgba(99,102,241,.18);transform:scale(1.2)}
+/* ── Sections ── */
+.flp .sec{position:relative;z-index:1;min-height:calc(100vh - 56px);scroll-snap-align:start;display:flex;flex-direction:column;justify-content:center;padding:56px;overflow:hidden}
+.flp .wrap{width:100%;max-width:1240px;margin:0 auto}
 
-.iclp .glow{position:absolute;border-radius:50%;filter:blur(120px);opacity:.5;pointer-events:none;z-index:0}
+/* ── Hero ── */
+.flp .hero-inner{display:flex;gap:48px;align-items:center;justify-content:center}
+.flp .hero-copy{flex:1;min-width:0;max-width:560px}
+.flp .hero-scene{flex:1.1;min-width:0;position:relative}
+.flp .scene-labels{position:absolute;inset:auto 0 -6px 0;display:flex;justify-content:space-between;padding:0 6%}
+.flp .sl{font-size:9px;letter-spacing:.22em;text-transform:uppercase}
+.flp .sl-machine{color:rgba(147,197,253,.65)}
+.flp .sl-human{color:rgba(251,146,60,.7)}
+.flp .eyebrow{display:inline-flex;align-items:center;gap:9px;padding:6px 14px;border-radius:100px;border:1px solid #1a2440;background:rgba(10,16,32,.7);font-size:13.5px;font-style:italic;font-family:'Instrument Serif',Georgia,serif;font-weight:400;color:#a8b0c4;letter-spacing:.01em}
+.flp .eyebrow .dotp{width:6px;height:6px;border-radius:50%;background:#22d3ee;box-shadow:0 0 8px #22d3ee}
+.flp .h1{font-family:'Bricolage Grotesque',sans-serif;font-size:clamp(44px,4.6vw,68px);line-height:1.03;font-weight:600;letter-spacing:-.03em;margin:22px 0 0;font-variation-settings:'opsz' 72;color:#dce5f5}
+.flp .h1 .grad{background:linear-gradient(100deg,#60a5fa,#a78bfa 40%,#fb7185 75%,#fbbf24);-webkit-background-clip:text;background-clip:text;color:transparent}
+.flp .sub{font-size:17px;line-height:1.65;color:#8195b3;margin:22px 0 0;max-width:470px}
+.flp .cta-row{display:flex;gap:12px;margin-top:30px;flex-wrap:wrap}
+.flp .drop-hint{font-size:10px;color:#56688a;letter-spacing:.08em;margin-top:14px}
+.flp .drop-hint b{color:#8195b3;font-weight:500}
+.flp .trust{display:flex;flex-wrap:wrap;align-items:center;gap:20px;margin-top:26px}
+.flp .trust-i{display:flex;align-items:center;gap:6px;font-size:11px;color:#56688a}
+.flp .hands-scene{position:relative;width:100%}
+.flp .hero-scene{transition:transform .25s linear,opacity .25s linear}
 
-.iclp .eyebrow{display:inline-flex;align-items:center;gap:9px;padding:6px 14px;border-radius:100px;border:1px solid #1c2535;background:#10141e;font-size:14px;font-style:italic;font-family:'Instrument Serif',Georgia,serif;font-weight:400;color:#a8b0c4;letter-spacing:.01em}
-.iclp .eyebrow .dotp{width:6px;height:6px;border-radius:50%;background:#10b981;box-shadow:0 0 6px #10b981}
-.iclp .kicker{font-family:'Instrument Serif',Georgia,serif;font-style:italic;font-size:15px;font-weight:400;letter-spacing:.01em;text-transform:none;color:#a5b4fc}
+/* ── Floating wireframe satellites (hero) ── */
+.flp .fl-el{position:absolute;pointer-events:none;z-index:2;transition:transform .5s cubic-bezier(.22,1,.36,1)}
+.flp .fl-ring{width:84px;height:84px;top:-8%;left:4%}
+.flp .fl-hex{width:44px;height:44px;bottom:2%;right:6%}
+.flp .fl-orb{width:10px;height:10px;top:14%;right:14%;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fbbf24,#fb7185 60%,transparent);box-shadow:0 0 14px rgba(251,146,60,.65);filter:blur(.4px)}
 
-.iclp .hero-grid{display:flex;gap:72px;align-items:center;justify-content:center}
-.iclp .hero-grid>div:first-child{flex:1.1;min-width:0;max-width:600px}
-.iclp .hero-grid .mock{flex-shrink:0}
-.iclp .h1{font-family:'Bricolage Grotesque',sans-serif;font-size:clamp(46px,4.9vw,72px);line-height:1.02;font-weight:600;letter-spacing:-.03em;margin:22px 0 0;font-variation-settings:'opsz' 72;color:#e4e8ef}
-.iclp .h1 .grad{background:linear-gradient(135deg,#818cf8,#a78bfa,#67e8f9);-webkit-background-clip:text;background-clip:text;color:transparent}
-.iclp .sub{font-size:18px;line-height:1.6;color:#7b8ba2;margin:24px 0 0;max-width:480px}
-.iclp .cta-row{display:flex;gap:12px;margin-top:30px;flex-wrap:wrap}
-.iclp .trust{display:flex;flex-wrap:wrap;align-items:center;gap:20px;margin-top:32px}
-.iclp .trust-i{display:flex;align-items:center;gap:6px;font-size:11px;color:#586b82}
+/* ── Dust field ── */
+.flp .dust{position:absolute;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.flp .dp{position:absolute;border-radius:50%;background:#8ea6d8;animation:flpDust 10s ease-in-out infinite}
+@keyframes flpDust{0%,100%{margin-top:0;margin-left:0}33%{margin-top:-22px;margin-left:8px}66%{margin-top:-8px;margin-left:-10px}}
 
-.iclp .mock{position:relative;width:100%;max-width:390px;margin-right:56px;padding-bottom:14px}
-.iclp .mock::before{content:"";position:absolute;top:20px;right:-22px;bottom:-22px;left:22px;background:linear-gradient(165deg,#171d30,#0c0f1a);border:1px solid #1c2535;border-radius:18px;z-index:0;box-shadow:0 40px 90px -32px rgba(0,0,0,.65)}
-.iclp .mock-win{position:relative;z-index:1;background:linear-gradient(180deg,#10141e,#0b0e17);border:1px solid #1c2535;border-radius:16px;overflow:visible;box-shadow:0 30px 80px rgba(0,0,0,.55),0 4px 16px rgba(0,0,0,.35),0 0 70px -22px rgba(99,102,241,.3),inset 0 1px 0 rgba(255,255,255,.04)}
-.iclp .mock-bar{height:28px;display:flex;align-items:center;gap:6px;padding:0 12px;border-bottom:1px solid #1c2535;background:#0d111a;border-radius:16px 16px 0 0}
-.iclp .mock-body{display:flex}
-.iclp .mock-rail{width:42px;flex-shrink:0;background:#080a10;border-right:1px solid #1c2535;display:flex;flex-direction:column;align-items:center;padding:16px 0;gap:12px}
-.iclp .mock-rail .ri{width:18px;height:18px;border-radius:6px;background:rgba(255,255,255,.045)}
-.iclp .mock-rail .ri.active{background:rgba(99,102,241,.3);box-shadow:0 0 0 1px rgba(99,102,241,.45),0 0 10px -2px rgba(99,102,241,.6)}
-.iclp .mock-content{flex:1;min-width:0}
-.iclp .mock-crumb{font-size:10px;color:#586b82;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 30px 0}
-.iclp .mock-crumb b{color:#9aa3b5;font-weight:600}
-.iclp .mock-crumb .sep{color:#3a4560;margin:0 6px}
-.iclp .mock-search{display:flex;align-items:center;gap:6px;font-size:10px;color:#4b5872;background:rgba(255,255,255,.025);border:1px solid #1c2535;border-radius:7px;padding:5px 10px;white-space:nowrap}
-.iclp .mock-livepill{margin-left:auto;display:flex;align-items:center;gap:5px;font-size:8.5px;color:#34d399;font-weight:600;letter-spacing:.03em}
-.iclp .mock-livedot{width:5px;height:5px;border-radius:50%;background:#34d399;box-shadow:0 0 6px #34d399}
-.iclp .tdot{width:8px;height:8px;border-radius:50%}
-.iclp .mock-simple{padding:20px 30px 40px;position:relative}
-.iclp .msrow{display:flex;align-items:center;gap:9px;font-size:12px;color:#7b8ba2;margin-bottom:22px}
-.iclp .mscards{display:grid;grid-template-columns:1fr 1fr;gap:16px;position:relative;z-index:2}
-.iclp .mscard{background:linear-gradient(160deg,#212a48,#181f36);border:1px solid #3a4770;border-radius:14px;padding:20px 18px;box-shadow:0 34px 64px -16px rgba(0,0,0,.7),0 0 0 1px rgba(99,102,241,.12),0 0 42px -12px rgba(99,102,241,.35),inset 0 1px 0 rgba(255,255,255,.07)}
-.iclp .mscard:first-child{transform:translateY(-16px)}
-.iclp .mscard:last-child{transform:translateY(6px)}
-.iclp .mscard .msl{font-size:12.5px;color:#7b8ba2;margin-bottom:12px}
-.iclp .mscard .msv{font-size:30px;font-weight:700;color:#e4e8ef;letter-spacing:-.02em}
-.iclp .msnar{font-size:13px;line-height:1.6;color:#9aa3b5;background:#141a2a;border:1px solid #242f4a;border-left:2px solid #6366f1;padding:14px 18px;border-radius:10px;margin:-16px 6px 0;position:relative;z-index:1;box-shadow:0 28px 50px -18px rgba(0,0,0,.7);transform:translateY(20px)}
-.iclp .float{position:absolute;background:#161c2b;border:1px solid #2a3350;border-radius:10px;padding:9px 12px;box-shadow:0 22px 48px -16px rgba(0,0,0,.75),0 0 22px -6px rgba(99,102,241,.35);display:flex;align-items:center;gap:8px;font-size:10.5px;font-weight:500;white-space:nowrap;z-index:4;color:#e4e8ef}
-.iclp .float .fd{width:5px;height:5px;border-radius:50%}
-.iclp .f1{top:-20px;left:26px}
-.iclp .f2{top:-20px;right:20px}
-.iclp .f3{bottom:-26px;right:30px}
+/* ── Reveal from depth on scroll ── */
+.flp .rv{opacity:0;transform:perspective(900px) translateY(34px) rotateX(6deg);transition:opacity .7s ease,transform .9s cubic-bezier(.16,1,.3,1)}
+.flp .rv.in{opacity:1;transform:none}
+.flp .cards .rv:nth-child(2){transition-delay:.07s}
+.flp .cards .rv:nth-child(3){transition-delay:.14s}
+.flp .cards .rv:nth-child(4){transition-delay:.21s}
+.flp .ev-loop .rv:nth-child(3){transition-delay:.1s}
+.flp .ev-loop .rv:nth-child(5){transition-delay:.2s}
 
-.iclp .sec-head{text-align:center;max-width:640px;margin:0 auto 44px}
-.iclp .sec-title{font-family:'Bricolage Grotesque',sans-serif;font-size:36px;font-weight:600;letter-spacing:-.02em;line-height:1.15;margin:14px 0 0;font-variation-settings:'opsz' 40;color:#e4e8ef}
-.iclp .sec-sub{font-size:15.5px;color:#7b8ba2;line-height:1.6;margin:14px 0 0}
+/* ── Section heads ── */
+.flp .sec-head{text-align:center;max-width:640px;margin:0 auto 44px}
+.flp .kicker{font-family:'Instrument Serif',Georgia,serif;font-style:italic;font-size:15px;font-weight:400;letter-spacing:.01em;color:#a5b4fc}
+.flp .sec-title{font-family:'Bricolage Grotesque',sans-serif;font-size:36px;font-weight:600;letter-spacing:-.02em;line-height:1.15;margin:14px 0 0;font-variation-settings:'opsz' 40;color:#dce5f5}
+.flp .sec-sub{font-size:15.5px;color:#8195b3;line-height:1.6;margin:14px 0 0}
 
-.iclp .pipe{display:flex;justify-content:space-between;margin-bottom:44px;position:relative}
-.iclp .pnode{flex:1;display:flex;flex-direction:column;align-items:center;text-align:center;position:relative;padding:0 6px}
-.iclp .pnode:not(:last-child)::after{content:"";position:absolute;top:26px;left:56%;right:-44%;height:1px;background:linear-gradient(90deg,#283248,#283248)}
-.iclp .pico{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:20px;border:1px solid;position:relative;z-index:1;background:#0a0d14}
-.iclp .pnode h3{font-family:'Bricolage Grotesque',sans-serif;font-size:15.5px;font-weight:600;margin:12px 0 3px;color:#e4e8ef;letter-spacing:-.01em}
-.iclp .pnode p{font-size:11px;color:#586b82;margin:0}
-.iclp .pnode .idx{font-size:9px;font-family:'JetBrains Mono',monospace;color:#586b82;margin-bottom:8px}
+/* ── Pipeline ── */
+.flp .pipe{display:flex;justify-content:space-between;margin-bottom:44px;position:relative}
+.flp .pnode{flex:1;display:flex;flex-direction:column;align-items:center;text-align:center;position:relative;padding:0 6px}
+.flp .pnode:not(:last-child)::after{content:"";position:absolute;top:26px;left:58%;right:-42%;height:1px;background:repeating-linear-gradient(90deg,rgba(99,102,241,.55) 0 5px,transparent 5px 11px);animation:flpConn 1.2s linear infinite;box-shadow:0 0 8px rgba(99,102,241,.25)}
+@keyframes flpConn{to{background-position:11px 0}}
+/* Traveling light pulse along each pipeline connector */
+.flp .pnode:not(:last-child)::before{content:"";position:absolute;top:24px;left:58%;width:5px;height:5px;border-radius:50%;background:#c7d2fe;box-shadow:0 0 10px #818cf8;z-index:2;animation:flpPulseDot 2.8s ease-in-out infinite}
+.flp .pnode:nth-child(2):not(:last-child)::before{animation-delay:.55s}
+.flp .pnode:nth-child(3):not(:last-child)::before{animation-delay:1.1s}
+.flp .pnode:nth-child(4):not(:last-child)::before{animation-delay:1.65s}
+@keyframes flpPulseDot{0%{left:58%;opacity:0}10%{opacity:1}45%{left:135%;opacity:1}55%,100%{left:135%;opacity:0}}
+/* Pipeline nodes hover: rise in depth */
+.flp .pico{transition:transform .25s cubic-bezier(.22,1,.36,1),box-shadow .25s}
+.flp .pnode:hover .pico{transform:translateY(-4px) scale(1.06)}
+.flp .pico{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:20px;border:1px solid;position:relative;z-index:1;background:#04070d}
+.flp .pnode h3{font-family:'Bricolage Grotesque',sans-serif;font-size:15.5px;font-weight:600;margin:12px 0 3px;color:#dce5f5;letter-spacing:-.01em}
+.flp .pnode p{font-size:11px;color:#56688a;margin:0;font-family:'JetBrains Mono',monospace}
+.flp .pnode .idx{font-size:9px;color:#56688a;margin-bottom:8px;letter-spacing:.14em}
 
-.iclp .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-.iclp .card{position:relative;border-radius:12px;border:1px solid #1c2535;background:rgba(255,255,255,.015);padding:16px 14px;overflow:hidden}
-.iclp .card .bar{position:absolute;top:0;left:0;right:0;height:2px;opacity:.7}
-.iclp .card .ic{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;margin-bottom:10px;border:1px solid}
-.iclp .card h4{font-family:'Bricolage Grotesque',sans-serif;font-size:14px;font-weight:600;margin:0 0 6px;color:#e4e8ef;letter-spacing:-.005em}
-.iclp .card p{font-size:11.5px;color:#7b8ba2;line-height:1.5;margin:0}
+/* ── Feature cards ── */
+.flp .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.flp .card{position:relative;border-radius:12px;border:1px solid #1a2440;background:rgba(255,255,255,.014);padding:18px 16px;transition:transform .2s,border-color .2s,box-shadow .25s}
+.flp .card:hover{transform:translateY(-3px);border-color:#263455;box-shadow:0 14px 34px -18px rgba(0,0,0,.7),0 0 24px -12px rgba(99,102,241,.35)}
+.flp .cc{position:absolute;width:9px;height:9px;border:0 solid rgba(99,102,241,.45);pointer-events:none}
+.flp .cc.tl{top:-1px;left:-1px;border-top-width:1px;border-left-width:1px}
+.flp .cc.tr{top:-1px;right:-1px;border-top-width:1px;border-right-width:1px}
+.flp .cc.bl{bottom:-1px;left:-1px;border-bottom-width:1px;border-left-width:1px}
+.flp .cc.br{bottom:-1px;right:-1px;border-bottom-width:1px;border-right-width:1px}
+.flp .card .ic{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;margin-bottom:10px;border:1px solid}
+.flp .card h4{font-family:'Bricolage Grotesque',sans-serif;font-size:14px;font-weight:600;margin:0 0 6px;color:#dce5f5;letter-spacing:-.005em}
+.flp .card p{font-size:11.5px;color:#8195b3;line-height:1.5;margin:0}
 
-.iclp .ev-loop{display:flex;gap:2px;align-items:flex-start;max-width:1080px;margin:0 auto}
-.iclp .panel{border-radius:16px;border:1px solid #1c2535;background:#10141e;padding:22px;box-shadow:0 24px 46px -22px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.03)}
-.iclp .ev-insight{flex:1.15;min-width:0;transform:translateY(-4px)}
-.iclp .ev-evidence{flex:1;min-width:0;background:#121a2c;border-color:rgba(52,211,153,.16);box-shadow:0 30px 56px -22px rgba(0,0,0,.65),0 0 34px -18px rgba(16,185,129,.3),inset 0 1px 0 rgba(255,255,255,.04);transform:translateY(-9px)}
-.iclp .ev-source{flex:1;min-width:0;background:#0d111b;transform:translateY(3px)}
-.iclp .panel-h{display:flex;align-items:center;gap:8px;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin-bottom:16px;color:#586b82}
-.iclp .claim{border-radius:11px;padding:14px;margin-bottom:8px;cursor:pointer;transition:background .15s,border-color .15s;border:1px solid transparent}
-.iclp .claim:last-child{margin-bottom:0}
-.iclp .claim:hover{background:rgba(255,255,255,.03)}
-.iclp .claim.on{border-color:rgba(99,102,241,.35);background:rgba(99,102,241,.07)}
-.iclp .claim p{font-size:13px;line-height:1.55;color:#8b96aa;margin:0}
-.iclp .claim.on p{color:#e4e8ef}
-.iclp .claim b{color:#e4e8ef;font-weight:700}
-.iclp .claim.on b{color:#e4e8ef}
-.iclp .harrow{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;width:64px;flex-shrink:0;position:relative;align-self:center;margin-top:6px}
-.iclp .hline{position:absolute;top:50%;left:0;right:0;height:2px;background:linear-gradient(90deg,rgba(99,102,241,.5),rgba(16,185,129,.6));box-shadow:0 0 10px rgba(16,185,129,.35);border-radius:2px}
-.iclp .hpill{display:flex;align-items:center;gap:5px;padding:6px 11px;border-radius:100px;border:1px solid rgba(16,185,129,.5);background:rgba(16,185,129,.12);font-size:9.5px;font-weight:600;color:#34d399;white-space:nowrap;position:relative;z-index:1;box-shadow:0 0 16px rgba(16,185,129,.28)}
-.iclp .harw{position:relative;z-index:1;background:#0a0d14;border-radius:4px;padding:2px;filter:drop-shadow(0 0 5px rgba(16,185,129,.5))}
-.iclp .etable,.iclp .stable{border-radius:9px;border:1px solid #1c2535;overflow:hidden;font-size:11px}
-.iclp .ehd,.iclp .erow{display:grid;grid-template-columns:1.5fr 1fr .7fr}
-.iclp .shd,.iclp .srow{display:grid;grid-template-columns:1.3fr .9fr 1fr}
-.iclp .ehd,.iclp .shd{background:#161c2b}
-.iclp .ehd div,.iclp .shd div{padding:7px 10px;font-size:8.5px;text-transform:uppercase;letter-spacing:.04em;color:#586b82;font-weight:600}
-.iclp .erow,.iclp .srow{border-top:1px solid #1c2535}
-.iclp .erow div,.iclp .srow div{padding:7px 10px;font-family:'JetBrains Mono',monospace;color:#8b96aa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.iclp .erow.on{background:rgba(16,185,129,.09);box-shadow:inset 2px 0 0 #10b981}
-.iclp .erow.on div{color:#e4e8ef}
-.iclp .erow.on div:nth-child(2){color:#34d399;font-weight:600}
-.iclp .srow.on{background:rgba(99,102,241,.09);box-shadow:inset 2px 0 0 #6366f1}
-.iclp .srow.on div{color:#e4e8ef}
-.iclp .src-foot{display:flex;align-items:center;gap:6px;margin-top:12px;font-size:10.5px;color:#586b82;font-family:'JetBrains Mono',monospace}
-.iclp .src-foot b{color:#818cf8;font-weight:600}
-.iclp .lineage{display:flex;align-items:center;justify-content:center;gap:14px;max-width:1080px;margin:26px auto 0;padding-top:22px;border-top:1px solid rgba(28,37,53,.6)}
-.iclp .ln-node{display:flex;align-items:center;gap:7px;font-size:11.5px;color:#8b96aa;font-weight:500}
-.iclp .ln-node.code{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#818cf8;background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.18);padding:6px 12px;border-radius:8px}
-.iclp .ln-dot{width:7px;height:7px;border-radius:50%}
-.iclp .ln-conn{width:34px;height:1px;background:linear-gradient(90deg,#283248,#3a4560)}
+/* ── Evidence loop ── */
+.flp .ev-loop{display:flex;gap:2px;align-items:flex-start;max-width:1080px;margin:0 auto}
+.flp .panel{border-radius:14px;border:1px solid #1a2440;background:#090e1a;padding:22px;box-shadow:0 24px 46px -22px rgba(0,0,0,.65),inset 0 1px 0 rgba(255,255,255,.03)}
+.flp .ev-insight{flex:1.15;min-width:0;transform:translateY(-4px)}
+.flp .ev-evidence{flex:1;min-width:0;background:#0b1424;border-color:rgba(52,211,153,.18);box-shadow:0 30px 56px -22px rgba(0,0,0,.7),0 0 34px -16px rgba(16,185,129,.35),inset 0 1px 0 rgba(255,255,255,.04);transform:translateY(-9px)}
+.flp .ev-source{flex:1;min-width:0;background:#070c16;transform:translateY(3px)}
+.flp .panel-h{display:flex;align-items:center;gap:8px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.12em;margin-bottom:16px;color:#56688a;font-family:'JetBrains Mono',monospace}
+.flp .claim{border-radius:10px;padding:14px;margin-bottom:8px;cursor:pointer;transition:background .15s,border-color .15s,box-shadow .2s;border:1px solid transparent}
+.flp .claim:last-child{margin-bottom:0}
+.flp .claim:hover{background:rgba(255,255,255,.03)}
+.flp .claim.on{border-color:rgba(99,102,241,.4);background:rgba(99,102,241,.07);box-shadow:0 0 20px -10px rgba(99,102,241,.5),inset 2px 0 0 #6366f1}
+.flp .claim p{font-size:13px;line-height:1.55;color:#8b96aa;margin:0}
+.flp .claim.on p{color:#dce5f5}
+.flp .claim b{color:#dce5f5;font-weight:700}
+.flp .harrow{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;width:64px;flex-shrink:0;position:relative;align-self:center;margin-top:6px}
+.flp .hline{position:absolute;top:50%;left:0;right:0;height:1px;background:repeating-linear-gradient(90deg,rgba(16,185,129,.7) 0 4px,transparent 4px 9px);animation:flpConn 1s linear infinite;box-shadow:0 0 10px rgba(16,185,129,.4)}
+.flp .hline2{background:repeating-linear-gradient(90deg,rgba(99,102,241,.7) 0 4px,transparent 4px 9px);box-shadow:0 0 10px rgba(99,102,241,.4)}
+.flp .hpill{display:flex;align-items:center;gap:5px;padding:6px 11px;border-radius:100px;border:1px solid rgba(16,185,129,.5);background:rgba(16,185,129,.1);font-size:9.5px;font-weight:600;color:#34d399;white-space:nowrap;position:relative;z-index:1;box-shadow:0 0 16px rgba(16,185,129,.3);font-family:'JetBrains Mono',monospace;letter-spacing:.06em}
+.flp .harw{position:relative;z-index:1;background:#04070d;border-radius:4px;padding:2px;filter:drop-shadow(0 0 5px rgba(16,185,129,.5))}
+.flp .etable,.flp .stable{border-radius:9px;border:1px solid #1a2440;overflow:hidden;font-size:11px}
+.flp .ehd,.flp .erow{display:grid;grid-template-columns:1.5fr 1fr .7fr}
+.flp .shd,.flp .srow{display:grid;grid-template-columns:1.3fr .9fr 1fr}
+.flp .ehd,.flp .shd{background:#0f1626}
+.flp .ehd div,.flp .shd div{padding:7px 10px;font-size:8.5px;text-transform:uppercase;letter-spacing:.06em;color:#56688a;font-weight:600;font-family:'JetBrains Mono',monospace}
+.flp .erow,.flp .srow{border-top:1px solid #1a2440}
+.flp .erow div,.flp .srow div{padding:7px 10px;font-family:'JetBrains Mono',monospace;color:#8b96aa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.flp .erow.on{background:rgba(16,185,129,.09);box-shadow:inset 2px 0 0 #10b981}
+.flp .erow.on div{color:#dce5f5}
+.flp .erow.on div:nth-child(2){color:#34d399;font-weight:600}
+.flp .srow.on{background:rgba(99,102,241,.09);box-shadow:inset 2px 0 0 #6366f1}
+.flp .srow.on div{color:#dce5f5}
+.flp .src-foot{display:flex;align-items:center;gap:6px;margin-top:12px;font-size:10.5px;color:#56688a}
+.flp .src-foot b{color:#818cf8;font-weight:600}
+.flp .lineage{display:flex;align-items:center;justify-content:center;gap:14px;max-width:1080px;margin:26px auto 0;padding-top:22px;border-top:1px solid rgba(26,36,64,.6)}
+.flp .ln-node{display:flex;align-items:center;gap:7px;font-size:11.5px;color:#8b96aa;font-weight:500}
+.flp .ln-node.code{font-size:10.5px;color:#818cf8;background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.2);padding:6px 12px;border-radius:8px}
+.flp .ln-dot{width:7px;height:7px;border-radius:50%}
+.flp .ln-conn{width:34px;height:1px;background:repeating-linear-gradient(90deg,rgba(99,102,241,.5) 0 4px,transparent 4px 8px)}
 
-.iclp .cta-card{max-width:720px;margin:0 auto;text-align:center;position:relative;z-index:1}
-.iclp .cta-icon{width:56px;height:56px;border-radius:18px;background:linear-gradient(135deg,rgba(99,102,241,.22),rgba(139,92,246,.1));border:1px solid rgba(99,102,241,.28);display:flex;align-items:center;justify-content:center;margin:0 auto 34px;box-shadow:0 0 40px -12px rgba(99,102,241,.4)}
-.iclp .cta-h{font-family:'Bricolage Grotesque',sans-serif;font-size:48px;font-weight:600;letter-spacing:-.03em;line-height:1.12;font-variation-settings:'opsz' 48;color:#e4e8ef}
-.iclp .cta-sub{font-size:16px;color:#7b8ba2;margin:20px auto 0;max-width:440px;line-height:1.65}
-.iclp .footer{position:relative;z-index:1;border-top:1px solid rgba(28,37,53,.6);padding:18px 0;margin-top:36px;text-align:center;font-size:11px;color:#586b82}
-.iclp .footer-links{display:flex;justify-content:center;gap:22px;margin-bottom:10px;font-size:12px}
-.iclp .footer-links a{color:#7b8ba2}
-.iclp .footer-links a:hover{color:#e4e8ef}
+/* ── CTA ── */
+.flp .cta-sec{justify-content:center}
+.flp .cta-card{max-width:760px;margin:0 auto;text-align:center;position:relative;z-index:1}
+.flp .cta-scene{margin:0 auto 8px;opacity:.9}
+.flp .cta-h{font-family:'Bricolage Grotesque',sans-serif;font-size:46px;font-weight:600;letter-spacing:-.03em;line-height:1.12;font-variation-settings:'opsz' 48;color:#dce5f5;margin:10px 0 0}
+.flp .cta-sub{font-size:16px;color:#8195b3;margin:18px auto 0;max-width:440px;line-height:1.65}
+.flp .footer{position:relative;z-index:1;border-top:1px solid rgba(26,36,64,.6);padding:22px 0 18px;margin-top:40px;text-align:center;font-size:11px;color:#56688a}
+.flp .footer-brand{display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:16px}
+.flp .fb-word{font-family:'Bricolage Grotesque',sans-serif;font-size:17px;letter-spacing:-.015em}
+.flp .fb-word b{font-weight:700;color:#f2f5fb}
+.flp .fb-word span{font-weight:500;color:#8195b3}
+.flp .fb-tag{font-family:'Instrument Serif',Georgia,serif;font-style:italic;font-size:12px;color:#6b7da0}
+.flp .footer-links{display:flex;justify-content:center;gap:22px;margin-bottom:10px;font-size:12px}
+.flp .footer-links a{color:#8195b3}
+.flp .footer-links a:hover{color:#dce5f5}
 
+/* ── Responsive ── */
 @media (max-width:1024px){
-  .iclp .hero-grid{flex-direction:column;gap:40px}
-  .iclp .mock{margin:0 auto;max-width:420px}
-  .iclp .dots{display:none}
+  .flp .hero-inner{flex-direction:column;gap:36px}
+  .flp .hero-scene{max-width:560px;margin:0 auto}
+  .flp .dots{display:none}
 }
 @media (max-width:820px){
-  .iclp .sec{padding:40px 22px}
-  .iclp .navlinks{display:none}
-  .iclp .pipe{flex-wrap:wrap;gap:20px 0}
-  .iclp .pnode{flex:0 0 33.33%}
-  .iclp .pnode:not(:last-child)::after{display:none}
-  .iclp .cards{grid-template-columns:repeat(2,1fr)}
-  .iclp .ev-loop{flex-direction:column;gap:14px}
-  .iclp .harrow{width:100%;flex-direction:row;margin:0}
-  .iclp .hline{display:none}
-  .iclp .cta-h{font-size:36px}
-  .iclp .lineage{flex-wrap:wrap}
+  .flp .sec{padding:40px 22px}
+  .flp .navlinks{display:none}
+  .flp .pipe{flex-wrap:wrap;gap:20px 0}
+  .flp .pnode{flex:0 0 33.33%}
+  .flp .pnode:not(:last-child)::after{display:none}
+  .flp .cards{grid-template-columns:repeat(2,1fr)}
+  .flp .ev-loop{flex-direction:column;gap:14px}
+  .flp .harrow{width:100%;flex-direction:row;margin:0}
+  .flp .hline{display:none}
+  .flp .cta-h{font-size:36px}
+  .flp .lineage{flex-wrap:wrap}
 }
 @media (prefers-reduced-motion:reduce){
-  .iclp{scroll-behavior:smooth}
+  .flp .pnode:not(:last-child)::after,.flp .pnode:not(:last-child)::before,.flp .hline{animation:none}
+  .flp .orb,.flp .dp{animation:none}
+  .flp .rv{opacity:1;transform:none;transition:none}
+  .flp .hero-scene{transition:none}
 }
 `;

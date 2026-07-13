@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { DataProfile, SemanticRole } from "../../types";
 import { SemanticRoleBadge } from "./SemanticRoleBadge";
-import { SectionLabel } from "../shared";
+import { HudCorners, SectionLabel } from "../shared";
 
 const ALL_ROLES: SemanticRole[] = [
   "order_id", "date", "customer_id", "product", "category",
@@ -10,12 +10,12 @@ const ALL_ROLES: SemanticRole[] = [
 
 /** Compact legend mapping color groups to what they represent. */
 const legendItems: { dot: string; label: string }[] = [
-  { dot: "bg-violet-400",  label: "Identifier" },
-  { dot: "bg-indigo-400",  label: "Date" },
-  { dot: "bg-cyan-400",    label: "Dimension" },
-  { dot: "bg-emerald-400", label: "Revenue" },
-  { dot: "bg-amber-400",   label: "Measure" },
-  { dot: "bg-slate-400",   label: "Other" },
+  { dot: "bg-violet-400",      label: "Identifier" },
+  { dot: "bg-indigo-400",      label: "Date" },
+  { dot: "bg-wire",            label: "Dimension" },
+  { dot: "bg-emerald-400",     label: "Revenue" },
+  { dot: "bg-thermal-warm",    label: "Measure" },
+  { dot: "bg-slate-400",       label: "Other" },
 ];
 
 export function DataProfilePanel({
@@ -29,9 +29,6 @@ export function DataProfilePanel({
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Record<string, SemanticRole>>({});
-
-  const dimensions = profile.columns.filter((c) => c.is_dimension);
-  const measures = profile.columns.filter((c) => c.is_measure);
 
   /** Enter edit mode — snapshot current roles into draft. */
   function startEditing() {
@@ -79,15 +76,16 @@ export function DataProfilePanel({
     <div className="h-full overflow-y-auto p-5 space-y-6">
       {/* Dataset summary card */}
       <div>
-        <SectionLabel>Dataset</SectionLabel>
-        <div className="bg-bg-elevated rounded-xl border border-border p-4 space-y-3 shadow-card">
+        <SectionLabel>Data Context</SectionLabel>
+        <div className="relative bg-bg-elevated rounded-lg border border-border p-4 space-y-3 shadow-card wire-grid-fine">
+          <HudCorners />
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
-              <svg className="w-4 h-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <div className="w-8 h-8 rounded-md bg-accent/10 border border-accent/20 flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
               </svg>
             </div>
-            <span className="text-sm font-medium text-text truncate">
+            <span className="text-sm font-medium text-text truncate font-mono">
               {profile.filename}
             </span>
           </div>
@@ -101,10 +99,10 @@ export function DataProfilePanel({
             <div className="pt-1 border-t border-border/60">
               <p className="text-[11px] text-text-secondary">
                 <span className="font-mono text-text">{profile.date_range.start}</span>
-                {" → "}
+                <span className="text-wire/70 mx-1">→</span>
                 <span className="font-mono text-text">{profile.date_range.end}</span>
               </p>
-              <p className="text-[10px] text-text-muted mt-0.5">
+              <p className="text-[10px] text-text-muted mt-0.5 font-mono">
                 {profile.date_range.span_days} days of data
               </p>
             </div>
@@ -144,23 +142,25 @@ export function DataProfilePanel({
           {!editing ? (
             <button
               onClick={startEditing}
-              className="text-[10px] text-accent hover:text-accent/80 transition-colors font-medium"
+              className="text-[10px] text-indigo-300 hover:text-indigo-200 transition-colors font-mono tracking-wide"
             >
-              Edit roles
+              edit roles
             </button>
           ) : (
-            <span className="text-[10px] text-amber-400 font-medium">
-              Editing{changedCount > 0 ? ` · ${changedCount} changed` : ""}
+            <span className="text-[10px] text-thermal-warm font-mono tracking-wide">
+              editing{changedCount > 0 ? ` · ${changedCount} changed` : ""}
             </span>
           )}
         </div>
 
         {hasManualOverrides && !editing && (
           <div className="flex items-center gap-1.5 mb-3 px-1">
-            <svg className="w-3 h-3 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="w-3 h-3 text-thermal-warm" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
             </svg>
-            <span className="text-[10px] text-amber-400/80">Manual overrides applied</span>
+            <span className="text-[10px] text-thermal-warm/80">
+              Human overrides applied — the machine defers to you
+            </span>
           </div>
         )}
 
@@ -169,7 +169,8 @@ export function DataProfilePanel({
           {profile.columns.map((col) => (
             <div
               key={col.name}
-              className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg hover:bg-bg-hover transition-colors"
+              className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-md
+                border border-transparent hover:border-border hover:bg-bg-hover transition-colors"
             >
               <span className="text-[11px] font-mono text-text truncate flex-1 min-w-0">
                 {col.name}
@@ -193,7 +194,7 @@ export function DataProfilePanel({
             <button
               onClick={applyEdits}
               className="flex-1 text-[11px] font-medium text-white bg-accent hover:bg-accent-muted
-                px-3 py-1.5 rounded-lg transition-colors"
+                px-3 py-1.5 rounded-md transition-colors shadow-glow"
             >
               Apply{changedCount > 0 ? ` (${changedCount})` : ""}
             </button>
@@ -201,7 +202,7 @@ export function DataProfilePanel({
               onClick={cancelEditing}
               className="flex-1 text-[11px] font-medium text-text-secondary hover:text-text
                 bg-bg-elevated hover:bg-bg-hover border border-border
-                px-3 py-1.5 rounded-lg transition-colors"
+                px-3 py-1.5 rounded-md transition-colors"
             >
               Cancel
             </button>
@@ -217,10 +218,10 @@ export function DataProfilePanel({
             {profile.health_flags.map((flag, i) => (
               <div
                 key={i}
-                className={`text-[11.5px] px-3 py-2.5 rounded-lg border ${
+                className={`text-[11.5px] px-3 py-2.5 rounded-md border-l-2 border ${
                   flag.severity === "warning"
-                    ? "border-amber-500/20 bg-amber-500/5 text-amber-300/90"
-                    : "border-border bg-bg-elevated text-text-secondary"
+                    ? "border-thermal-warm/20 border-l-thermal-warm/70 bg-thermal-warm/5 text-amber-200/90 shadow-[inset_2px_0_8px_-4px_rgba(251,191,36,0.3)]"
+                    : "border-border border-l-wire/50 bg-bg-elevated text-text-secondary"
                 }`}
               >
                 <span className="font-mono font-medium">{flag.column}</span>
@@ -236,9 +237,12 @@ export function DataProfilePanel({
       {profile.summary && (
         <div>
           <SectionLabel>AI Summary</SectionLabel>
-          <p className="text-xs text-text-secondary leading-relaxed">
-            {profile.summary}
-          </p>
+          <div className="relative rounded-lg border border-border bg-bg-elevated/60 p-3.5">
+            <HudCorners tone="wire" />
+            <p className="text-xs text-text-secondary leading-relaxed">
+              {profile.summary}
+            </p>
+          </div>
         </div>
       )}
     </div>
@@ -264,7 +268,7 @@ function RoleSelect({
         transition-colors flex-shrink-0
         ${
           isChanged
-            ? "border-amber-400/40 text-amber-400 bg-amber-400/5"
+            ? "border-thermal-warm/40 text-thermal-warm bg-thermal-warm/5"
             : "border-border text-text-secondary hover:border-border-light"
         }`}
       style={{ minWidth: 80 }}
@@ -280,8 +284,8 @@ function RoleSelect({
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-bg/40 rounded-lg px-3 py-2">
-      <p className="text-[10px] text-text-muted uppercase tracking-wider">{label}</p>
+    <div className="bg-bg/50 border border-border/50 rounded-md px-3 py-2">
+      <p className="text-[9px] text-text-muted uppercase tracking-[0.14em] font-mono">{label}</p>
       <p className="text-sm font-semibold font-mono text-text mt-0.5">{value}</p>
     </div>
   );

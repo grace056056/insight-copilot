@@ -5,6 +5,7 @@ import { DataProfilePanel } from "./components/data/DataProfilePanel";
 import { InsightFeed } from "./components/insights/InsightFeed";
 import { EvidencePanel } from "./components/evidence/EvidencePanel";
 import { EmptyState, LoadingState, PrimaryButton } from "./components/shared";
+import { ConnectionOverlay } from "./components/shared/ConnectionOverlay";
 
 export default function App() {
   const {
@@ -41,7 +42,7 @@ export default function App() {
           <div className="flex-1">
             <EmptyState
               icon={
-                <svg className="w-16 h-16 text-red-400/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                <svg className="w-16 h-16 text-thermal-hot/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
                 </svg>
               }
@@ -70,8 +71,11 @@ export default function App() {
 
         {stage === "ready" && profile && (
           <>
-            {/* Left panel */}
-            <aside className="w-[258px] border-r border-border flex-shrink-0 bg-bg-surface">
+            {/* Animated thread from the selected claim to its proof */}
+            <ConnectionOverlay selectedId={selectedInsightId} />
+
+            {/* Left panel — data context (what the machine understood) */}
+            <aside className="w-[262px] border-r border-border flex-shrink-0 bg-bg-surface glow-seam seam-right panel-enter-left">
               <DataProfilePanel
                 profile={profile}
                 hasManualOverrides={hasManualOverrides}
@@ -79,7 +83,7 @@ export default function App() {
               />
             </aside>
 
-            {/* Center panel */}
+            {/* Center panel — insights (where human decisions are made) */}
             <main className="flex-1 min-w-0 bg-bg">
               <InsightFeed
                 insights={insights}
@@ -88,14 +92,24 @@ export default function App() {
               />
             </main>
 
-            {/* Right panel */}
-            <aside className="w-[340px] border-l border-border flex-shrink-0 bg-bg-surface">
+            {/* Right panel — evidence (the machine's proof) */}
+            <aside
+              data-evidence-panel
+              className="w-[344px] border-l border-border flex-shrink-0 bg-bg-surface glow-seam seam-left panel-enter-right"
+            >
               {selectedInsight ? (
-                <EvidencePanel insight={selectedInsight} />
+                // Keyed by insight id: each selection unfolds the panel in depth
+                <div key={selectedInsight.id} className="h-full unfold-in">
+                  <EvidencePanel insight={selectedInsight} />
+                </div>
               ) : (
-                <div className="h-full flex items-center justify-center px-8">
-                  <p className="text-xs text-text-muted text-center leading-relaxed">
-                    Select an insight to view its evidence
+                <div className="h-full flex flex-col items-center justify-center px-8 gap-3 wire-grid-fine">
+                  <svg width="28" height="28" viewBox="0 0 28 28" fill="none" className="opacity-50">
+                    <circle cx="14" cy="14" r="11" stroke="#56688a" strokeWidth="1" strokeDasharray="3 4" />
+                    <circle cx="14" cy="14" r="3" fill="none" stroke="#56688a" strokeWidth="1" />
+                  </svg>
+                  <p className="text-xs text-text-muted text-center leading-relaxed font-mono tracking-wide">
+                    select an insight to trace its evidence
                   </p>
                 </div>
               )}
