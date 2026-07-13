@@ -1,6 +1,6 @@
 import type { Insight } from "../../types";
 import { EvidenceTable } from "./EvidenceTable";
-import { MetricCard, SectionLabel } from "../shared";
+import { HudCorners, MetricCard, SectionLabel } from "../shared";
 
 const templateLabels: Record<string, string> = {
   revenue_trend: "Revenue Trend",
@@ -10,13 +10,56 @@ const templateLabels: Record<string, string> = {
   repeat_purchase: "Customer Retention",
 };
 
-const chartIcons: Record<string, string> = {
-  line: "📈",
-  bar: "📊",
-  horizontal_bar: "📊",
-  pie: "🥧",
-  metric: "🔢",
-};
+/** Wireframe chart glyphs — one thin-stroke icon per chart type. */
+function ChartGlyph({ type }: { type: string }) {
+  const stroke = "#34d399";
+  const common = {
+    width: 16,
+    height: 16,
+    viewBox: "0 0 16 16",
+    fill: "none" as const,
+    stroke,
+    strokeWidth: 1.2,
+    strokeLinecap: "round" as const,
+  };
+  switch (type) {
+    case "line":
+      return (
+        <svg {...common}>
+          <path d="M1.5 12.5l4-5 3 2.5 5.5-7" />
+          <path d="M1.5 14.5h13" opacity="0.4" />
+        </svg>
+      );
+    case "pie":
+      return (
+        <svg {...common}>
+          <circle cx="8" cy="8" r="6" />
+          <path d="M8 2v6l4.5 4" />
+        </svg>
+      );
+    case "metric":
+      return (
+        <svg {...common}>
+          <rect x="2" y="3" width="12" height="10" rx="1.5" />
+          <path d="M5 9.5l2-2.5 2 1.5 2.5-3" />
+        </svg>
+      );
+    case "horizontal_bar":
+      return (
+        <svg {...common}>
+          <path d="M2 3.5h9M2 8h12M2 12.5h6" />
+          <path d="M2 1.5v13" opacity="0.4" />
+        </svg>
+      );
+    default: // bar
+      return (
+        <svg {...common}>
+          <path d="M3.5 14V9M8 14V4.5M12.5 14V7" />
+          <path d="M1.5 14.5h13" opacity="0.4" />
+        </svg>
+      );
+  }
+}
 
 export function EvidencePanel({ insight }: { insight: Insight }) {
   const ev = insight.evidence;
@@ -29,12 +72,13 @@ export function EvidencePanel({ insight }: { insight: Insight }) {
       {/* Header card */}
       <div className="mb-5">
         <SectionLabel>Evidence</SectionLabel>
-        <div className="bg-bg-elevated rounded-xl border border-border p-4 shadow-card">
+        <div className="relative bg-bg-elevated rounded-lg border border-emerald-400/15 p-4 shadow-card wire-grid-fine">
+          <HudCorners tone="wire" />
           <div className="flex items-center gap-2.5 mb-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-400/10 flex items-center justify-center text-sm">
-              {chartIcons[ev.chart_type] ?? "📊"}
+            <div className="w-8 h-8 rounded-md bg-emerald-400/10 border border-emerald-400/25 flex items-center justify-center">
+              <ChartGlyph type={ev.chart_type} />
             </div>
-            <span className="text-sm font-semibold text-text">
+            <span className="text-sm font-semibold font-display text-text tracking-tight">
               {templateLabels[ev.template_used] ?? ev.template_used}
             </span>
           </div>
@@ -59,12 +103,12 @@ export function EvidencePanel({ insight }: { insight: Insight }) {
       {/* Chart metadata */}
       <div className="pb-5 mb-5 border-b border-border/50">
         <SectionLabel>Visualization</SectionLabel>
-        <div className="bg-bg-elevated rounded-xl border border-border p-4 space-y-2.5 shadow-card">
-          <MetaRow label="Chart type" value={ev.chart_type.replace("_", " ")} />
-          <MetaRow label="X axis" value={ev.x_key.replace("_", " ")} />
-          <MetaRow label="Y axis" value={ev.y_key.replace("_", " ")} />
-          {ev.highlight && <MetaRow label="Highlight" value={ev.highlight} />}
-          <MetaRow label="Data points" value={`${ev.data.length}`} />
+        <div className="bg-bg-elevated rounded-lg border border-border p-4 space-y-2.5 shadow-card">
+          <MetaRow label="chart type" value={ev.chart_type.replace("_", " ")} />
+          <MetaRow label="x axis" value={ev.x_key.replace("_", " ")} />
+          <MetaRow label="y axis" value={ev.y_key.replace("_", " ")} />
+          {ev.highlight && <MetaRow label="highlight" value={ev.highlight} />}
+          <MetaRow label="data points" value={`${ev.data.length}`} />
         </div>
       </div>
 
@@ -74,13 +118,15 @@ export function EvidencePanel({ insight }: { insight: Insight }) {
         <EvidenceTable data={ev.data} />
       </div>
 
-      {/* Trust badge */}
+      {/* Trust badge — the verification seal */}
       <div className="text-center py-2">
-        <div className="inline-flex items-center gap-2 text-[10.5px] text-emerald-400/90 bg-emerald-500/8 border border-emerald-500/15 px-4 py-2 rounded-full">
+        <div className="inline-flex items-center gap-2 text-[10px] font-mono tracking-wide
+          text-emerald-300/90 bg-emerald-500/5 border border-emerald-500/20 px-4 py-2 rounded-full
+          shadow-[0_0_16px_rgba(52,211,153,0.1)]">
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
           </svg>
-          All numbers computed by pandas — verified, not generated
+          computed by pandas — verified, not generated
         </div>
       </div>
     </div>
@@ -89,8 +135,8 @@ export function EvidencePanel({ insight }: { insight: Insight }) {
 
 function MetaRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between text-[11.5px]">
-      <span className="text-text-muted">{label}</span>
+    <div className="flex justify-between text-[11px]">
+      <span className="text-text-muted font-mono">{label}</span>
       <span className="text-text font-mono capitalize">{value}</span>
     </div>
   );

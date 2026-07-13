@@ -3,23 +3,33 @@ import type { AppStage } from "../../hooks/useInsights";
 const stageLabels: Record<AppStage, string> = {
   landing: "",
   empty: "",
-  loading: "Profiling dataset...",
-  profiled: "Profile complete",
-  analyzing: "Generating insights...",
-  ready: "Analysis complete",
-  error: "Error",
+  loading: "profiling dataset",
+  profiled: "profile complete",
+  analyzing: "generating insights",
+  ready: "analysis complete",
+  error: "error",
 };
 
 /**
- * Mini bar-chart icon for the logo mark.
- * Three bars at different heights suggest analytics/insight.
+ * Logo mark — a wireframe node meeting a thermal node, echoing the
+ * two-hands motif: machine intelligence touching human decision.
  */
 function LogoIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <rect x="1" y="8" width="2.5" height="5" rx="0.75" fill="rgba(255,255,255,0.5)" />
-      <rect x="5.25" y="4" width="2.5" height="9" rx="0.75" fill="rgba(255,255,255,0.8)" />
-      <rect x="9.5" y="1" width="2.5" height="12" rx="0.75" fill="white" />
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      {/* wireframe node (machine) */}
+      <circle cx="5" cy="8" r="3.4" stroke="rgba(147,197,253,0.9)" strokeWidth="1" strokeDasharray="2 1.6" />
+      {/* thermal node (human) */}
+      <circle cx="11.5" cy="8" r="2.2" fill="url(#tg)" />
+      {/* spark at the meeting point */}
+      <circle cx="8.4" cy="8" r="0.9" fill="#fff" />
+      <defs>
+        <radialGradient id="tg" cx="0.35" cy="0.35" r="0.9">
+          <stop offset="0%" stopColor="#fbbf24" />
+          <stop offset="55%" stopColor="#fb7185" />
+          <stop offset="100%" stopColor="#7c3aed" />
+        </radialGradient>
+      </defs>
     </svg>
   );
 }
@@ -34,9 +44,17 @@ export function TopBar({
   const showNav = stage !== "landing";
 
   return (
-    <header className="h-[52px] border-b border-border flex items-center justify-between px-5 flex-shrink-0 bg-bg-surface/80 backdrop-blur-sm">
-      <div className="flex items-center gap-4">
+    <header className="h-[52px] border-b border-border flex items-center justify-between px-5 flex-shrink-0 bg-bg-surface/80 backdrop-blur-sm relative">
+      {/* Glowing baseline seam under the bar */}
+      <div
+        className="absolute bottom-[-1px] left-0 right-0 h-px pointer-events-none"
+        style={{
+          background:
+            "linear-gradient(90deg, transparent, rgba(99,102,241,0.4) 30%, rgba(34,211,238,0.35) 70%, transparent)",
+        }}
+      />
 
+      <div className="flex items-center gap-4">
         {/* ── Brand: logo mark + wordmark as one clickable unit ── */}
         <button
           onClick={onHome}
@@ -44,39 +62,36 @@ export function TopBar({
             hover:bg-bg-elevated/60 transition-colors"
           aria-label="Return to home"
         >
-          {/* Logo mark */}
           <div
             className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0
-              bg-gradient-to-br from-[#1e2440] to-[#161b2e]
-              border border-[#2a3350]
-              shadow-[0_0_12px_rgba(99,102,241,0.08)]
-              group-hover:border-accent/30
-              group-hover:shadow-[0_0_16px_rgba(99,102,241,0.15)]
+              bg-gradient-to-br from-[#141b33] to-[#0c1223]
+              border border-[#263455]
+              shadow-[0_0_12px_rgba(99,102,241,0.1)]
+              group-hover:border-accent/40
+              group-hover:shadow-[0_0_16px_rgba(99,102,241,0.2)]
               transition-all duration-200"
           >
             <LogoIcon />
           </div>
 
-          {/* Wordmark */}
           <div className="flex items-baseline gap-0">
-            <span className="text-[14px] font-semibold tracking-tight text-text
+            <span className="text-[14px] font-semibold font-display tracking-tight text-text
               group-hover:text-white transition-colors">
               Insight
             </span>
-            <span className="text-[14px] font-semibold tracking-tight text-text-secondary
+            <span className="text-[14px] font-semibold font-display tracking-tight text-text-secondary
               group-hover:text-text transition-colors ml-[3px]">
               Copilot
             </span>
           </div>
 
-          {/* Version */}
           <span className="text-[8.5px] text-text-muted/70 bg-bg-elevated/80 border border-border/60
             px-1.5 py-[1px] rounded font-mono tracking-wider ml-0.5">
-            v0.1
+            v0.2
           </span>
         </button>
 
-        {/* ── Navigation: Home button (secondary, spaced from brand) ── */}
+        {/* ── Navigation: Home button ── */}
         {showNav && (
           <div className="flex items-center gap-2 ml-2 pl-3 border-l border-border/50">
             <button
@@ -94,20 +109,26 @@ export function TopBar({
         )}
       </div>
 
-      {/* ── Right: pipeline status ── */}
+      {/* ── Right: telemetry-style pipeline status ── */}
       {showNav && (
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 font-mono">
           {(stage === "loading" || stage === "analyzing") && (
-            <div className="w-3.5 h-3.5 border-[1.5px] border-accent border-t-transparent rounded-full animate-spin" />
+            <span className="relative flex w-2.5 h-2.5">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-wire/50 animate-ping" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-wire/80" />
+            </span>
           )}
           {stage === "ready" && (
-            <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.4)]" />
+            <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
           )}
           {stage === "error" && (
-            <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_6px_rgba(244,63,94,0.4)]" />
+            <div className="w-2 h-2 rounded-full bg-thermal-core shadow-[0_0_8px_rgba(244,63,94,0.6)]" />
           )}
-          <span className="text-[11px] text-text-secondary">
+          <span className="text-[10px] tracking-[0.14em] uppercase text-text-secondary">
             {stageLabels[stage]}
+            {(stage === "loading" || stage === "analyzing") && (
+              <span className="animate-blink text-wire ml-0.5">▍</span>
+            )}
           </span>
         </div>
       )}

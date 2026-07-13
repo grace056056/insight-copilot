@@ -71,7 +71,8 @@ export function EvidenceTable({ data }: { data: Row[] }) {
     <div className="space-y-3">
       {Array.from(groups.entries()).map(([type, rows]) => (
         <div key={type}>
-          <p className="text-[10px] uppercase tracking-wider text-text-muted mb-1.5 px-0.5">
+          <p className="flex items-center gap-1.5 text-[9.5px] uppercase tracking-[0.14em] font-mono text-text-muted mb-1.5 px-0.5">
+            <span className="w-1 h-1 bg-wire/50 rotate-45" />
             {groupLabels[type] ?? type.replace(/_/g, " ")}
           </p>
           <MiniTable rows={rows} maxRows={8} />
@@ -107,7 +108,7 @@ function MiniTable({
             {keys.map((key) => (
               <th
                 key={key}
-                className="text-left px-2.5 py-2 text-text-muted font-medium uppercase tracking-wider border-b border-border whitespace-nowrap"
+                className="text-left px-2.5 py-2 text-text-muted font-mono font-medium uppercase tracking-[0.1em] text-[9px] border-b border-border whitespace-nowrap"
               >
                 {columnLabels[key] ?? key.replace(/_/g, " ")}
               </th>
@@ -133,8 +134,8 @@ function MiniTable({
         </tbody>
       </table>
       {overflow && (
-        <div className="text-[10px] text-text-muted text-center py-1.5 bg-bg-elevated border-t border-border">
-          Showing {maxRows} of {rows.length} rows
+        <div className="text-[9.5px] font-mono text-text-muted text-center py-1.5 bg-bg-elevated border-t border-border tracking-wide">
+          showing {maxRows} of {rows.length} rows
         </div>
       )}
     </div>
