@@ -1,4 +1,45 @@
+import { useId } from "react";
 import type { ReactNode } from "react";
+
+
+/* ─── Logo mark ───
+   Two tapered beams — abstracted fingertips — converge on one focal
+   point: the machine side is a wireframe outline, the human side a
+   thermal fill that runs hottest at the contact tip. The bright
+   vertical spark in the gap is the moment of insight, and reads as a
+   subtle "I". Outline-vs-fill contrast keeps the duality legible at
+   favicon sizes, where strokes and dashes would smear. */
+export function LogoMark({ size = 16 }: { size?: number }) {
+  const id = useId();
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <defs>
+        <linearGradient id={`${id}-thermal`} x1="0" y1="0.5" x2="1" y2="0.5">
+          <stop offset="0" stopColor="#fbbf24" />
+          <stop offset="0.5" stopColor="#fb7185" />
+          <stop offset="1" stopColor="#7c3aed" />
+        </linearGradient>
+      </defs>
+      {/* machine beam — wireframe outline */}
+      <path
+        d="M3 8.8 Q7.5 8.1 10.2 11.35 Q10.7 12 10.2 12.65 Q7.5 15.9 3 15.2 Q2.1 12 3 8.8 Z"
+        stroke="#93c5fd"
+        strokeWidth="1.3"
+        strokeLinejoin="round"
+      />
+      {/* mesh hint inside the machine beam */}
+      <path d="M4.4 12h4.2" stroke="#93c5fd" strokeWidth="0.9" strokeLinecap="round" opacity="0.55" />
+      {/* human beam — thermal fill, hottest at the meeting tip */}
+      <path
+        d="M21 8.8 Q16.5 8.1 13.8 11.35 Q13.3 12 13.8 12.65 Q16.5 15.9 21 15.2 Q21.9 12 21 8.8 Z"
+        fill={`url(#${id}-thermal)`}
+      />
+      {/* the spark — focal point and subtle "I" */}
+      <path d="M12 7.6 Q13.45 12 12 16.4 Q10.55 12 12 7.6 Z" fill="#ffffff" />
+    </svg>
+  );
+}
+
 
 /* ─── HUD corner ticks ───
    Drop inside any relatively-positioned panel to give it the

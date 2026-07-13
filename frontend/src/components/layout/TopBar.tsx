@@ -1,4 +1,5 @@
 import type { AppStage } from "../../hooks/useInsights";
+import { LogoMark } from "../shared";
 
 const stageLabels: Record<AppStage, string> = {
   landing: "",
@@ -9,30 +10,6 @@ const stageLabels: Record<AppStage, string> = {
   ready: "analysis complete",
   error: "error",
 };
-
-/**
- * Logo mark — a wireframe node meeting a thermal node, echoing the
- * two-hands motif: machine intelligence touching human decision.
- */
-function LogoIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      {/* wireframe node (machine) */}
-      <circle cx="5" cy="8" r="3.4" stroke="rgba(147,197,253,0.9)" strokeWidth="1" strokeDasharray="2 1.6" />
-      {/* thermal node (human) */}
-      <circle cx="11.5" cy="8" r="2.2" fill="url(#tg)" />
-      {/* spark at the meeting point */}
-      <circle cx="8.4" cy="8" r="0.9" fill="#fff" />
-      <defs>
-        <radialGradient id="tg" cx="0.35" cy="0.35" r="0.9">
-          <stop offset="0%" stopColor="#fbbf24" />
-          <stop offset="55%" stopColor="#fb7185" />
-          <stop offset="100%" stopColor="#7c3aed" />
-        </radialGradient>
-      </defs>
-    </svg>
-  );
-}
 
 export function TopBar({
   stage,
@@ -71,7 +48,7 @@ export function TopBar({
               group-hover:shadow-[0_0_16px_rgba(99,102,241,0.2)]
               transition-all duration-200"
           >
-            <LogoIcon />
+            <LogoMark size={18} />
           </div>
 
           <div className="flex items-baseline gap-0">

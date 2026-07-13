@@ -26,6 +26,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { LogoMark } from "../shared";
 
 const GITHUB_URL = "https://github.com/grace056056/insight-copilot";
 
@@ -569,9 +570,11 @@ export function LandingPage({
                 </radialGradient>
               </defs>
             </svg>
+            <LogoMark size={15} />
           </span>
           Insight <span className="sec2">Copilot</span>
         </div>
+        
         <div className="navlinks">
           <span className="navlink">Product</span>
           <span className="navlink" onClick={() => goTo(1)}>Pipeline</span>
