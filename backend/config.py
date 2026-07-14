@@ -24,9 +24,9 @@ class Settings:
 
     # --- Server ---
     CORS_ORIGINS: list[str] = [
-        "http://localhost:5173",   # Vite dev server default
-        "http://localhost:3000",   # Common React dev port
-    ]
+    "http://localhost:5173",
+    "https://insight-copilot-eta.vercel.app",
+]
 
     # --- Upload Limits ---
     MAX_FILE_SIZE_MB: int = 50
