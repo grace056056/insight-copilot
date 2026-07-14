@@ -7,7 +7,8 @@
 
 import type { UploadResponse, InsightsResponse, SemanticRole } from "../types";
 
-const BASE = "/api";
+const BASE =
+  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || "/api";
 
 class ApiError extends Error {
   constructor(public status: number, message: string) {
