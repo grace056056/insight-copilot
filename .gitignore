@@ -22,3 +22,6 @@ archive/
 
 # Logs
 *.log
+# Build artifacts
+*.tsbuildinfo
+.pytest_cache/

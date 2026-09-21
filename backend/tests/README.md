@@ -1,14 +1,17 @@
-# Tests — Phase 2
+# Tests
 
-This directory will contain tests for the Insight Copilot backend.
+Run from `backend/`:
 
-## Planned test coverage
+```bash
+pip install -r requirements-dev.txt
+python -m pytest
+```
 
-- **Profiler tests**: Verify dtype detection across edge cases (mixed types, currency strings, ambiguous dates)
-- **Analysis template tests**: Each template tested against the sample dataset with expected output shapes
-- **Prompt validation tests**: Ensure LLM responses conform to Pydantic schemas
-- **API integration tests**: End-to-end upload → profile → analyze flow
+All tests run offline: `conftest.py` forces mock mode, so no Anthropic API key is needed and no API calls are made.
 
-## Why tests are deferred
-
-This is a portfolio MVP with a 7-day timeline. The codebase is structured for testability (thin routers, pure service functions, typed schemas), and tests will be added in the next iteration.
+| File | What it checks |
+|---|---|
+| `test_profiler.py` | Row/column counts, dtype detection, date range, null rate and numeric stats, CSV/TSV/XLSX parsing, clean error on a corrupt workbook |
+| `test_templates.py` | All 5 templates registered and runnable on the sample data; revenue trend recomputed independently in pandas and compared value by value; registry skips templates whose required roles are missing; one failing template doesn't stop the rest |
+| `test_llm_parsing.py` | Semantic and narrator parsers handle code fences, preamble text, unknown roles, invalid priorities, and reject malformed output |
+| `test_api.py` | Health check, input validation (unsupported type, empty file, no dataset loaded), full upload → evidence → insights flow, manual role override |

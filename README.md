@@ -171,7 +171,7 @@ cd insight-copilot
 
 ```bash
 cd backend
-conda activate insight
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
 # Optional: enable Claude API (works without it using mock classifiers)
@@ -193,6 +193,16 @@ npm run dev
 Open [http://localhost:5173](http://localhost:5173). The landing page loads first — click **Try Sample Dataset** or upload your own CSV, TSV, or Excel file.
 
 The Vite dev server proxies `/api` requests to the backend automatically.
+
+### Tests
+
+```bash
+cd backend
+pip install -r requirements-dev.txt
+python -m pytest
+```
+
+The suite (24 tests) runs fully offline in mock mode. It checks the deterministic profiler, recomputes template outputs independently with pandas to confirm the evidence numbers are exact, exercises the defensive LLM-output parsers against malformed responses, and runs the full upload → evidence → insights flow through the API.
 
 ---
 
@@ -270,6 +280,7 @@ insight-copilot/
 │   │   └── narrator_v1.py       # Narrative synthesis prompt
 │   ├── models/
 │   │   └── schemas.py           # Pydantic models (15 typed schemas)
+│   ├── tests/                   # pytest suite (profiler, templates, parsers, API)
 │   └── data/
 │       └── sample_ecommerce.csv # 3,500-row demo dataset
 ├── frontend/
@@ -309,22 +320,10 @@ insight-copilot/
 
 ---
 
-## Resume Bullet Points
-
-- Built an AI analytics platform that separates deterministic computation (pandas) from LLM narration, ensuring numerical accuracy in business insights through typed evidence objects and structured output validation
-- Built a multi-format ingestion pipeline supporting CSV, TSV, and Excel (.xlsx) files with validation and graceful error handling for malformed uploads
-- Designed a two-stage data profiling pipeline: statistical profiling via pandas feeds an LLM semantic classifier that maps columns to a business ontology with English and Chinese column-name support, reducing token usage by 98% versus sending raw data
-- Implemented an analysis template registry using the Strategy pattern, enabling auto-selection of applicable analyses based on dataset capabilities without hardcoded column assumptions
-- Built structured output validation with automatic retry and graceful fallback, handling LLM non-determinism without service degradation
-- Developed a three-panel React + TypeScript dashboard with evidence-linked insights, where every AI-generated claim traces to a specific pandas computation
-- Designed a SaaS-style landing page with split hero layout, embedded product mockup, and pipeline visualization that communicates the product's value proposition before any data is loaded
-
----
-
 ## License
 
 MIT
 
 ---
 
-Built by [Tongyu Wu] · UCI Data Science · 2026
+Built by Tongyu (Grace) Wu · UCI Data Science · 2026
