@@ -304,7 +304,7 @@ insight-copilot/
 
 ## Future Improvements
 
-**Multi-format Data Ingestion** — Support PDF, and business documents while preserving the evidence-first analysis pipeline.
+**Document Data Ingestion** — Support PDF and business documents while preserving the evidence-based analysis pipeline.
 
 **Multi-dataset reasoning** — Upload multiple CSVs and analyze relationships across them (e.g., orders + marketing spend → ROI by channel).
 
