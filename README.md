@@ -2,6 +2,8 @@
 
 **Evidence-first AI analytics — pandas computes the numbers, AI tells the story.**
 
+**[Live demo](https://insight-copilot-eta.vercel.app)** · [Run locally](#run-locally) · [Screenshots](#screenshots)
+
 Insight Copilot is an evidence-first AI analytics assistant. Pandas computes verified evidence from your data, Claude turns that evidence into a clear business narrative, and every insight links back to the exact computation, template, and data slice behind it — so nothing you read is a claim you have to take on faith. Built as an AI analytics product prototype demonstrating AI engineering, data pipeline design, and full-stack product development, currently applied to e-commerce business data.
 
 > **This is not a ChatGPT wrapper.** The system never lets an LLM compute numbers. Pandas computes the evidence. The AI writes the narrative. Every insight links back to the exact computation that produced it.
