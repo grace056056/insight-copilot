@@ -6,10 +6,12 @@ export function InsightFeed({
   insights,
   selectedId,
   onSelect,
+  onAskCoach,
 }: {
   insights: Insight[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  onAskCoach?: (insight: Insight) => void;
 }) {
   const highCount = insights.filter((i) => i.priority === "high").length;
 
@@ -42,6 +44,17 @@ export function InsightFeed({
                 isSelected={insight.id === selectedId}
                 onClick={() => onSelect(insight.id)}
               />
+              {/* Sits outside the card: the card itself is a <button> */}
+              {onAskCoach && (
+                <div className="flex justify-end mt-1.5">
+                  <button
+                    onClick={() => onAskCoach(insight)}
+                    className="text-[10.5px] font-mono tracking-wide text-text-muted hover:text-indigo-300 transition-colors"
+                  >
+                    ask Coach about this →
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>

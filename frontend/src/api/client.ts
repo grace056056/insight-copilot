@@ -5,7 +5,15 @@
  * All backend calls go through this file — no fetch() elsewhere.
  */
 
-import type { UploadResponse, InsightsResponse, SemanticRole } from "../types";
+import type {
+  UploadResponse,
+  InsightsResponse,
+  SemanticRole,
+  CoachReply,
+  CoachBriefing,
+  CoachFocus,
+  ChatTurn,
+} from "../types";
 
 const BASE =
   import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || "/api";
@@ -64,5 +72,22 @@ export async function updateRoles(
   return request<UploadResponse>("/update-roles", {
     method: "POST",
     body: JSON.stringify({ overrides }),
+  });
+}
+
+/** Starter questions for the Coach, tailored to the loaded dataset. */
+export async function getCoachBriefing(): Promise<CoachBriefing> {
+  return request<CoachBriefing>("/coach/briefing");
+}
+
+/** Ask the Coach one question. History is kept in the browser and sent along. */
+export async function askCoach(
+  question: string,
+  history: ChatTurn[],
+  focus: CoachFocus | null
+): Promise<CoachReply> {
+  return request<CoachReply>("/coach/ask", {
+    method: "POST",
+    body: JSON.stringify({ question, history, focus }),
   });
 }

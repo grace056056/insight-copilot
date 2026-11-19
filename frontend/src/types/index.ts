@@ -123,3 +123,44 @@ export interface InsightsResponse {
   insight_count: number;
   insights: Insight[];
 }
+
+// --- Coach (conversational agent) ---
+
+export interface CoachStep {
+  tool: string;
+  label: string;
+  ok: boolean;
+}
+
+export interface CoachEvidence {
+  id: string; // "E1", "E2", ... unique within one reply
+  title: string;
+  evidence: Evidence;
+}
+
+export interface CoachReply {
+  answer: string;
+  next_step: string | null;
+  evidence: CoachEvidence[];
+  steps: CoachStep[];
+  /** True when every number in the answer was found in the evidence. */
+  grounded: boolean;
+  unverified_numbers: string[];
+  suggestions: string[];
+  mode: "claude" | "mock";
+}
+
+export interface CoachBriefing {
+  suggestions: string[];
+  mode: "claude" | "mock";
+}
+
+export interface CoachFocus {
+  category: string;
+  text: string;
+}
+
+export interface ChatTurn {
+  role: "user" | "assistant";
+  content: string;
+}
