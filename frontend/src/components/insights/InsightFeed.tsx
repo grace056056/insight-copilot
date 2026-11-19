@@ -51,7 +51,7 @@ export function InsightFeed({
                     onClick={() => onAskCoach(insight)}
                     className="text-[10.5px] font-mono tracking-wide text-text-muted hover:text-indigo-300 transition-colors"
                   >
-                    ask Coach about this →
+                    ask Pip about this →
                   </button>
                 </div>
               )}

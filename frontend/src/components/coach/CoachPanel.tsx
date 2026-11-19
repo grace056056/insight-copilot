@@ -1,5 +1,5 @@
 /**
- * CoachPanel — the conversational agent. While open it takes the place of
+ * CoachPanel — Pip, the conversational agent. While open it takes the place of
  * the evidence panel on the right side of the workspace.
  *
  * Every Coach reply carries the Evidence its tools computed. The reply
@@ -7,7 +7,8 @@
  * evidence?), the steps the agent took, and evidence chips that expand to
  * the same table the Evidence panel uses.
  *
- * All user-facing copy for the Coach lives in COPY below.
+ * The agent's product name is Pip. In code it is called "coach", its role,
+ * so nothing is named after Python's `pip`. All user-facing copy lives in COPY.
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -17,7 +18,7 @@ import { EvidenceTable } from "../evidence/EvidenceTable";
 import { HudCorners } from "../shared";
 
 const COPY = {
-  title: "Coach",
+  title: "Pip",
   demoBadge: "demo mode",
   demoHint: "No API key set, so a keyword router is planning instead of Claude. The computations are the same.",
   greeting: (p: DataProfile) =>
@@ -112,7 +113,7 @@ export function CoachPanel({
         )}
         <button
           onClick={onClose}
-          aria-label="Close Coach"
+          aria-label="Close Pip"
           className="ml-auto w-7 h-7 flex items-center justify-center rounded-md text-text-muted
             hover:text-text hover:bg-bg-hover transition-colors"
         >

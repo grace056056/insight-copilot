@@ -35,7 +35,7 @@ async def lifespan(app: FastAPI):
     print(f"   Anthropic model: {settings.ANTHROPIC_MODEL}")
     if not settings.ANTHROPIC_API_KEY:
         print("   ⚠️  ANTHROPIC_API_KEY not set — using mock semantic classifier for development")
-        print("   ⚠️  Coach is in demo mode — keyword router instead of Claude tool use")
+        print("   ⚠️  Pip (the Coach agent) is in demo mode — keyword router instead of Claude tool use")
     yield
     print("👋 Insight Copilot backend shutting down.")
 

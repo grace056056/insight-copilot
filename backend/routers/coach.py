@@ -1,7 +1,8 @@
 """
 routers/coach.py
 ----------------
-Endpoints for the Coach, the conversational agent.
+Endpoints for Pip, the conversational agent. ("Pip" is the product name;
+the code calls it "coach", its role, to stay clear of Python's `pip`.)
 
   GET  /api/coach/briefing — starter questions for the loaded dataset
   POST /api/coach/ask      — answer one question, with evidence and a step trace
@@ -41,7 +42,7 @@ def _enforce_rate_limit(client_ip: str) -> None:
     if len(calls) >= settings.COACH_RATE_LIMIT_PER_HOUR:
         raise HTTPException(
             status_code=429,
-            detail="The Coach has reached its hourly question limit for this demo. Please try again later.",
+            detail="Pip has reached its hourly question limit for this demo. Please try again later.",
         )
     calls.append(now)
 

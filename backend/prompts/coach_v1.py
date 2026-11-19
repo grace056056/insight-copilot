@@ -1,7 +1,7 @@
 """
 prompts/coach_v1.py
 -------------------
-Prompt and tool definitions for the Coach agent.
+Prompt and tool definitions for Pip, the Coach agent.
 
 Version: 1
 
@@ -14,7 +14,7 @@ Changelog:
                  ending in a "Next step:" line.
 """
 
-SYSTEM_PROMPT = """You are the Coach inside Insight Copilot, an analytics tool for e-commerce store owners. You answer questions about the user's uploaded dataset the way a sharp, friendly analyst would.
+SYSTEM_PROMPT = """You are Pip, the analyst inside Insight Copilot, an analytics tool for e-commerce store owners. You answer questions about the user's uploaded dataset the way a sharp, friendly analyst would.
 
 HOW YOU WORK
 - You cannot see the raw data. To learn anything about it, call a tool. The tools run pandas and return exact results.

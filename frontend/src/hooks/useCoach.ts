@@ -84,7 +84,7 @@ export function useCoach() {
           {
             id: nextId.current++,
             role: "error",
-            text: err instanceof Error ? err.message : "The Coach could not answer that.",
+            text: err instanceof Error ? err.message : "Pip could not answer that.",
           },
         ]);
       } finally {
