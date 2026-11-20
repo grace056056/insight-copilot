@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 
 import pandas as pd
 
@@ -92,13 +93,34 @@ class _Turn:
         )
 
 
+def _plain_text(text: str) -> str:
+    """Remove markdown the model sometimes adds. The UI shows text as written."""
+    text = re.sub(r"(\*\*|__|`)", "", text)
+    text = re.sub(r"(?m)^\s{0,3}#{1,6}\s+", "", text)
+    return text.strip()
+
+
+def _profile_numbers(profile: DataProfile) -> set[float]:
+    """
+    Figures the model was given in the dataset profile (row count, date
+    range, column ranges). pandas computed these during profiling, so
+    quoting them is grounded even when no tool ran this turn.
+    """
+    facts: list = [profile.row_count, profile.column_count]
+    if profile.date_range:
+        facts += [profile.date_range.start, profile.date_range.end, profile.date_range.span_days]
+    for col in profile.columns:
+        facts += [col.stats.min, col.stats.max]
+    return collect_evidence_numbers(facts)
+
+
 def _split_next_step(text: str) -> tuple[str, str | None]:
     """
     Separate the finding from the recommendation.
 
-    The grounding check covers the finding only. The "Next step" line is
-    advice ("follow up within 30 days"), not a claim about the data, and the
-    prompt forbids it from introducing figures about the dataset.
+    In the Claude path both parts go through the grounding check. In mock
+    mode the recommendation is fixed template text from the narrator
+    ("follow up within 30 days"), so only the finding is checked there.
     """
     idx = text.lower().rfind(NEXT_STEP_MARKER)
     if idx == -1:
@@ -150,6 +172,11 @@ def _claude_answer(request: CoachRequest, df: pd.DataFrame, profile: DataProfile
     ]
     messages.append({"role": "user", "content": request.question})
 
+    profile_numbers = _profile_numbers(profile)
+
+    def known_numbers() -> set[float]:
+        return turn.numbers() | profile_numbers
+
     answer = ""
     corrected = False
     for _ in range(settings.COACH_MAX_STEPS):
@@ -181,8 +208,8 @@ def _claude_answer(request: CoachRequest, df: pd.DataFrame, profile: DataProfile
             messages.append({"role": "user", "content": results})
             continue
 
-        answer = "".join(b.text for b in response.content if b.type == "text").strip()
-        unverified = find_unverified(_split_next_step(answer)[0], turn.numbers(), _exempt_text(request))
+        answer = _plain_text("".join(b.text for b in response.content if b.type == "text"))
+        unverified = find_unverified(answer, known_numbers(), _exempt_text(request))
         if unverified and not corrected:
             # One chance to fix it, with the specific numbers that failed.
             corrected = True
@@ -197,7 +224,7 @@ def _claude_answer(request: CoachRequest, df: pd.DataFrame, profile: DataProfile
         )
 
     body, next_step = _split_next_step(answer)
-    unverified = find_unverified(body, turn.numbers(), _exempt_text(request))
+    unverified = find_unverified(answer, known_numbers(), _exempt_text(request))
     return CoachReply(
         answer=body,
         next_step=next_step,

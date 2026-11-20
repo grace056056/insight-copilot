@@ -19,7 +19,8 @@ What is deliberately NOT checked:
   - numbers the user typed in their own question
   - numbers from earlier turns of the conversation, which were checked
     when they were first produced
-  - the "Next step" recommendation, which is advice and not a data claim
+  - in mock mode only, the "Next step" recommendation, which is fixed
+    template text
 
 Anything the model derives itself — a difference, a ratio, an abbreviation
 like "28.1k" — fails the check on purpose.

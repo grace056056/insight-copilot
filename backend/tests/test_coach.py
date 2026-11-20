@@ -268,3 +268,32 @@ def test_coach_endpoints(client):
 
     assert client.post("/api/coach/ask", json={"question": "   "}).status_code == 400
     assert client.post("/api/coach/ask", json={"question": "x" * 501}).status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# Found in the first live run against the real API
+# ---------------------------------------------------------------------------
+
+def test_small_talk_reply_is_cleaned_and_profile_facts_count_as_grounded(sample_profiled):
+    profile, df = sample_profiled
+    model = ScriptedModel(text(
+        "Hi, I'm **Pip**. Your data has 3,500 rows and runs from 2024-01-01 to 2024-06-30."
+    ))
+    reply = ask("hi pip", df, profile, client=model)
+    assert "*" not in reply.answer and "Pip" in reply.answer
+    assert reply.grounded and reply.next_step is None
+    assert not reply.steps and not reply.evidence
+    assert len(model.requests) == 1          # no tool calls, no rewrite
+
+
+def test_next_step_numbers_are_checked_in_the_claude_path(sample_profiled):
+    profile, df = sample_profiled
+    bad = "West leads on revenue.\nNext step: Win back the 9,999 lapsed buyers."
+    model = ScriptedModel(tool_use("query_data", REGION_QUERY), text(bad), text(bad))
+    reply = ask("Which region is best?", df, profile, client=model)
+    assert reply.grounded is False and reply.unverified_numbers == ["9999"]
+
+
+def test_prompt_covers_small_talk_and_name():
+    from prompts.coach_v1 import SYSTEM_PROMPT
+    assert "small talk" in SYSTEM_PROMPT and "radar" in SYSTEM_PROMPT and "asterisks" in SYSTEM_PROMPT
