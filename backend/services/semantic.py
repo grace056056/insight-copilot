@@ -98,7 +98,11 @@ async def classify_columns(profile: DataProfile) -> DataProfile:
     prompt = _build_classification_prompt(profile)
 
     # --- Call Claude with retry logic ---
-    result = await _call_claude_with_retry(prompt)
+    try:
+        result = await _call_claude_with_retry(prompt)
+    except Exception as e:  # bad key format, SDK/httpx mismatch, network...
+        logger.error("Semantic profiling crashed: %s", e)
+        result = None
 
     if result is None:
         logger.warning("Semantic profiling failed after retries — using fallback")

@@ -92,12 +92,19 @@ def run_all(
     Returns:
         List of {"template": str, "display_name": str, "evidence": Evidence}
     """
+    from analysis.revenue_basis import net_basis
+
     runnable = get_runnable_templates(profile)
     results = []
+    # Every template sees the same net-revenue rows (cancelled and refunded
+    # orders removed) and says so in its description.
+    basis = net_basis(df, profile)
+    df = basis.df
 
     for template in runnable:
         try:
             evidence = template.execute(df, profile)
+            evidence.description = basis.append_to(evidence.description)
             results.append({
                 "template": template.name,
                 "display_name": template.display_name,

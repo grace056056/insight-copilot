@@ -49,3 +49,8 @@ def client():
 
     with TestClient(app) as c:
         yield c
+
+
+def kept(df):
+    """Orders that count as revenue: the app reports net of cancelled/refunded."""
+    return df[df["order_status"] == "Completed"]

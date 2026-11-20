@@ -36,5 +36,11 @@ class Settings:
     # --- Analysis ---
     MAX_INSIGHTS: int = 7                  # Number of insights to generate per run
 
+    # --- Coach (conversational agent) ---
+    COACH_MAX_STEPS: int = 6               # Max model calls per question (tool calls + final answer)
+    COACH_MAX_TOKENS: int = 900            # Max tokens per model call
+    COACH_MAX_QUESTION_CHARS: int = 500
+    COACH_RATE_LIMIT_PER_HOUR: int = int(os.getenv("COACH_RATE_LIMIT_PER_HOUR", "30"))
+
 
 settings = Settings()

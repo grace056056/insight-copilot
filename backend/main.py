@@ -21,6 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from config import settings
 from routers import upload
 from routers import insights
+from routers import coach
 
 
 # ---------------------------------------------------------------------------
@@ -34,6 +35,7 @@ async def lifespan(app: FastAPI):
     print(f"   Anthropic model: {settings.ANTHROPIC_MODEL}")
     if not settings.ANTHROPIC_API_KEY:
         print("   ⚠️  ANTHROPIC_API_KEY not set — using mock semantic classifier for development")
+        print("   ⚠️  Pip (the Coach agent) is in demo mode — keyword router instead of Claude tool use")
     yield
     print("👋 Insight Copilot backend shutting down.")
 
@@ -62,6 +64,7 @@ app.add_middleware(
 # ---------------------------------------------------------------------------
 app.include_router(upload.router, prefix="/api")
 app.include_router(insights.router, prefix="/api")
+app.include_router(coach.router, prefix="/api")
 
 
 # ---------------------------------------------------------------------------

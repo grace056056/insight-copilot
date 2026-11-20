@@ -13,6 +13,7 @@ openpyxl==3.1.5             # Excel (.xlsx) read engine for pandas
 
 # --- LLM Integration (Day 2+) ---
 anthropic==0.34.1
+httpx==0.27.2              # anthropic 0.34 passes `proxies` to httpx, which 0.28 removed
 
 # --- Utilities ---
 pydantic==2.9.1             # Already a FastAPI dependency, pinned for clarity
