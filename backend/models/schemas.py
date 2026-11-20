@@ -16,10 +16,27 @@ Design note:
 
 from __future__ import annotations
 
+import math
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+
+def finite_or_none(value: Any) -> Any:
+    """Replace NaN / infinity with None, recursively.
+
+    JSON has no NaN or Infinity, so one such value anywhere in a response
+    turns the whole request into a 500. They appear legitimately (growth from
+    a $0 month is a division by zero), so the models scrub them at the edge.
+    """
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    if isinstance(value, dict):
+        return {k: finite_or_none(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [finite_or_none(v) for v in value]
+    return value
 
 
 # ---------------------------------------------------------------------------
@@ -105,6 +122,11 @@ class ColumnStats(BaseModel):
 
     # Categorical-only stats (None for numeric columns)
     top_values: list[TopValue] | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _drop_non_finite(cls, data: Any) -> Any:
+        return finite_or_none(data) if isinstance(data, dict) else data
 
 
 class TopValue(BaseModel):
@@ -202,6 +224,11 @@ class Evidence(BaseModel):
         default=None,
         description="Which data point to visually emphasize",
     )
+
+    @model_validator(mode="after")
+    def _drop_non_finite(self) -> "Evidence":
+        self.data = finite_or_none(self.data)
+        return self
 
 
 class Insight(BaseModel):

@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import io
 import logging
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -94,13 +95,131 @@ def _read_dataframe(file_content: bytes, filename: str) -> pd.DataFrame:
                 "and row-based data."
             )
         return df
+    return _read_delimited(file_content, filename)
+
+
+# Excel on Windows saves "CSV" in the local code page, not UTF-8. Try UTF-8
+# first, then the common Chinese and Western European encodings.
+_ALT_DELIMITERS = (";", "\t", "|")
+_MONEY_CHARS = r"[$€£¥,\s]"
+
+
+def _read_delimited(file_content: bytes, filename: str) -> pd.DataFrame:
+    if b"\x00" in file_content[:4096]:
+        raise ValueError("this looks like a binary file, not a text table")
+
+    sep = "\t" if filename.lower().endswith(".tsv") else ","
+    df, last_error = None, None
+    for encoding in _encoding_order(file_content):
+        try:
+            df = _parse(file_content, sep, encoding)
+            break
+        except (UnicodeDecodeError, UnicodeError) as e:
+            last_error = e
+    if df is None:
+        raise ValueError(f"could not decode the file as text ({last_error})")
+
+    # A European export uses ";" between fields; read with "," it collapses
+    # into one column whose header still contains the real delimiter.
+    if df.shape[1] == 1:
+        header = str(df.columns[0])
+        for alt in _ALT_DELIMITERS:
+            if alt != sep and alt in header:
+                df = _parse(file_content, alt, encoding)
+                break
+    return df
+
+
+def _encoding_order(file_content: bytes) -> tuple[str, ...]:
+    """UTF-8 first. If that fails, guess between Chinese and Western text.
+
+    Both legacy encodings accept most byte sequences, so trying them in a
+    fixed order silently garbles one of them. The tell: Chinese characters
+    are pairs of high bytes, while an accented Latin letter is a single high
+    byte surrounded by plain ASCII.
+    """
+    sample = file_content[:200_000]
+    high = [b >= 0x80 for b in sample]
+    paired = sum(
+        1 for i, h in enumerate(high)
+        if h and ((i > 0 and high[i - 1]) or (i + 1 < len(high) and high[i + 1]))
+    )
+    mostly_pairs = sum(high) > 0 and paired / sum(high) > 0.5
+    legacy = ("gb18030", "cp1252") if mostly_pairs else ("cp1252", "gb18030")
+    return ("utf-8-sig",) + legacy + ("latin-1",)
+
+
+def _parse(file_content: bytes, sep: str, encoding: str) -> pd.DataFrame:
     return pd.read_csv(
         io.BytesIO(file_content),
         nrows=settings.MAX_ROWS_FOR_PROFILING,
-        # .tsv files are tab-delimited; the default comma separator would
-        # collapse every row into a single column.
-        sep="\t" if filename.lower().endswith(".tsv") else ",",
+        sep=sep,
+        encoding=encoding,
     )
+
+
+def parse_dates(series: pd.Series) -> pd.Series:
+    """Parse a text column as dates, working out whether the day comes first.
+
+    pandas assumes month-first (US style). On a 31/01/2024-style file that
+    turns every date after the 12th into a missing value, and the rows are
+    silently dropped from monthly totals. Parse both ways and keep whichever
+    reading makes sense of more rows; a tie keeps the pandas default.
+    """
+    if pd.api.types.is_datetime64_any_dtype(series):
+        return series
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        month_first = pd.to_datetime(series, errors="coerce")
+        day_first = pd.to_datetime(series, errors="coerce", dayfirst=True)
+    return day_first if day_first.notna().sum() > month_first.notna().sum() else month_first
+
+
+def _normalize_dates(df: pd.DataFrame, columns: list[ColumnProfile]) -> list[HealthFlag]:
+    """Store date columns as real dates and report any rows that didn't parse."""
+    flags: list[HealthFlag] = []
+    for col in columns:
+        series = df[col.name]
+        if col.dtype != DType.DATETIME or not isinstance(series, pd.Series):
+            continue
+        parsed = parse_dates(series)
+        unreadable = int(series.notna().sum() - parsed.notna().sum())
+        df[col.name] = parsed
+        if unreadable > 0:
+            flags.append(HealthFlag(
+                column=col.name,
+                issue="unparsed_dates",
+                detail=(
+                    f"{unreadable:,} of {len(series):,} dates could not be read "
+                    f"and are left out of time-based analysis"
+                ),
+                severity="warning",
+            ))
+    return flags
+
+
+def _normalize_numbers(df: pd.DataFrame) -> pd.DataFrame:
+    """Make the DataFrame agree with what the profiler will say about it.
+
+    "$1,204.50" is detected as numeric by _detect_dtype, but the stored
+    column was still text, so a template that summed it concatenated strings.
+    Convert those columns for real, and treat infinities as missing values.
+    """
+    for col in df.columns:
+        series = df[col]
+        if not isinstance(series, pd.Series):  # duplicate header: leave as is
+            continue
+        if series.dtype == object:
+            non_null = series.dropna().astype(str)
+            if len(non_null) and non_null.str.contains(r"[$€£¥]|\d,\d{3}", regex=True).any():
+                cleaned = series.astype("string").str.replace(_MONEY_CHARS, "", regex=True)
+                converted = pd.to_numeric(cleaned, errors="coerce")
+                if converted.notna().sum() == series.notna().sum():
+                    df[col] = converted.astype(float)
+                    series = df[col]
+        if pd.api.types.is_float_dtype(series):
+            df[col] = series.replace([np.inf, -np.inf], np.nan)
+    return df
 
 
 def profile_csv(file_content: bytes, filename: str) -> tuple[DataProfile, pd.DataFrame]:
@@ -118,7 +237,11 @@ def profile_csv(file_content: bytes, filename: str) -> tuple[DataProfile, pd.Dat
         Tuple of (DataProfile, DataFrame).
     """
     # --- Parse file (CSV/TSV or Excel) ---
-    df = _read_dataframe(file_content, filename)
+    df = _normalize_numbers(_read_dataframe(file_content, filename))
+    if len(df) == 0:
+        raise UnparsableTableError(
+            "This file has column headers but no data rows, so there is nothing to analyze."
+        )
 
     # --- Profile each column ---
     columns: list[ColumnProfile] = []
@@ -126,11 +249,14 @@ def profile_csv(file_content: bytes, filename: str) -> tuple[DataProfile, pd.Dat
         col_profile = _profile_column(df[col_name], col_name, len(df))
         columns.append(col_profile)
 
+    # --- Parse date columns once, so every analysis reads them the same way ---
+    date_flags = _normalize_dates(df, columns)
+
     # --- Detect date range ---
     date_range = _detect_date_range(df, columns)
 
     # --- Detect data quality issues ---
-    health_flags = _detect_health_flags(df, columns)
+    health_flags = _detect_health_flags(df, columns) + date_flags
 
     # --- Build the profile ---
     profile = DataProfile(

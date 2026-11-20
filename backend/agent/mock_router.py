@@ -165,6 +165,9 @@ def phrase_query_answer(spec: QuerySpec, rows: list[dict], y_key: str, title: st
             return f"{v:,.2f}" if isinstance(v, float) and not float(v).is_integer() else f"{int(v):,}"
         return str(v)
 
+    if not rows:
+        return f"{title}: no rows matched, so there is nothing to report. Check the column roles in the profile."
+
     if not spec.group_by and not spec.time_grain:
         row = rows[0]
         return f"{title}: {fmt(row[y_key])}, across {row['rows_matched']:,} matching rows."

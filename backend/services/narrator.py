@@ -31,6 +31,7 @@ Interview talking point:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 
@@ -112,91 +113,110 @@ async def generate_insights(
 
 async def _claude_narrate(evidence_results: list[dict]) -> list[dict]:
     """
-    Use Claude to synthesize narratives from evidence.
+    Use Claude to write the narratives, then check its numbers.
 
-    Sends the evidence descriptions and data to Claude with strict
-    instructions to use only the provided numbers. Validates the
-    response and retries once on failure.
+    The prompt tells Claude to use only the numbers in the evidence, but a
+    prompt is a request, not a guarantee. So after Claude answers, pandas'
+    evidence gets the last word (the same check Pip's answers go through):
+
+      1. Every number in an insight's text and recommendation must appear in
+         that insight's own evidence.
+      2. If some don't, Claude gets one chance to rewrite.
+      3. Any insight that still fails is replaced by the deterministic
+         template sentence for that analysis, so nothing unverified ships.
+
+    Any failure at all (bad key, network, SDK error) falls back to the mock
+    narrator. The Anthropic SDK is synchronous, so the call runs in a worker
+    thread to keep the server responsive for other visitors.
     """
+    try:
+        return await asyncio.to_thread(_claude_narrate_checked, evidence_results)
+    except Exception as e:
+        logger.error("Claude narrator failed (%s) — falling back to mock narrator", e)
+        return _mock_narrate(evidence_results)
+
+
+NARRATOR_MAX_CALLS = 2
+
+
+def _claude_narrate_checked(evidence_results: list[dict]) -> list[dict]:
     import anthropic
     from prompts.narrator_v1 import (
         SYSTEM_PROMPT,
         USER_PROMPT_TEMPLATE,
         CORRECTION_PROMPT,
+        GROUNDING_CORRECTION_PROMPT,
         format_evidence_for_prompt,
     )
 
-    # Build the evidence blocks for the prompt
     evidence_blocks = "\n\n".join(
-        format_evidence_for_prompt(
-            r["template"],
-            r["evidence"].model_dump(),
-        )
+        format_evidence_for_prompt(r["template"], r["evidence"].model_dump())
         for r in evidence_results
     )
+    messages = [{"role": "user", "content": USER_PROMPT_TEMPLATE.format(evidence_blocks=evidence_blocks)}]
+    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY, timeout=60.0)
 
-    prompt = USER_PROMPT_TEMPLATE.format(evidence_blocks=evidence_blocks)
+    narratives: list[dict] | None = None
+    problems: dict[int, list[str]] = {}
 
-    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
-
-    # --- First attempt ---
-    raw_text = ""
-    try:
+    for attempt in range(NARRATOR_MAX_CALLS):
         response = client.messages.create(
             model=settings.ANTHROPIC_MODEL,
             max_tokens=2000,
             system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": prompt}],
+            messages=messages,
         )
+        raw_text = "".join(b.text for b in response.content if b.type == "text")
+        parsed = _parse_narrator_response(raw_text)
 
-        raw_text = "".join(
-            block.text for block in response.content if block.type == "text"
-        )
-        result = _parse_narrator_response(raw_text)
+        if parsed is None:
+            correction = CORRECTION_PROMPT.format(error="Response did not match expected schema")
+        else:
+            narratives = parsed
+            problems = _ungrounded(narratives, evidence_results)
+            if not problems:
+                logger.info("Claude narrator passed the number check on call %d", attempt + 1)
+                return narratives
+            correction = GROUNDING_CORRECTION_PROMPT.format(problems="\n".join(
+                f'- insight for "{narratives[i]["template_used"]}": {", ".join(nums)}'
+                for i, nums in problems.items()
+            ))
+            logger.warning("Narrator numbers not in evidence: %s", problems)
 
-        if result is not None:
-            logger.info("Claude narrator succeeded on first attempt")
-            return result
+        messages = messages[:1] + [
+            {"role": "assistant", "content": raw_text or "(empty response)"},
+            {"role": "user", "content": correction},
+        ]
 
-        first_error = "Response did not match expected schema"
-
-    except json.JSONDecodeError as e:
-        first_error = f"Invalid JSON: {e}"
-    except anthropic.APIError as e:
-        logger.error("Claude API error in narrator: %s", e)
+    if narratives is None:
+        logger.warning("Claude narrator never produced valid JSON — using mock narrator")
         return _mock_narrate(evidence_results)
 
-    # --- Retry with correction ---
-    logger.warning("Narrator retrying: %s", first_error)
+    # Replace only the insights that still carry unverified numbers.
+    for i in problems:
+        template_name = narratives[i]["template_used"]
+        source = [r for r in evidence_results if r["template"] == template_name]
+        replacement = _mock_narrate(source) if source else []
+        logger.warning("Replacing %s insight with its template sentence", template_name)
+        narratives[i] = replacement[0] if replacement else None
+    return [n for n in narratives if n is not None]
 
-    try:
-        correction = CORRECTION_PROMPT.format(error=first_error)
-        response = client.messages.create(
-            model=settings.ANTHROPIC_MODEL,
-            max_tokens=2000,
-            system=SYSTEM_PROMPT,
-            messages=[
-                {"role": "user", "content": prompt},
-                {"role": "assistant", "content": raw_text},
-                {"role": "user", "content": correction},
-            ],
-        )
 
-        raw_text = "".join(
-            block.text for block in response.content if block.type == "text"
-        )
-        result = _parse_narrator_response(raw_text)
+def _ungrounded(narratives: list[dict], evidence_results: list[dict]) -> dict[int, list[str]]:
+    """Map insight index -> numbers it states that its evidence does not contain."""
+    from agent.grounding import collect_evidence_numbers, find_unverified
 
-        if result is not None:
-            logger.info("Claude narrator succeeded on retry")
-            return result
-
-    except Exception as e:
-        logger.error("Narrator retry failed: %s", e)
-
-    # --- Fallback to mock ---
-    logger.warning("Claude narrator failed — falling back to mock narrator")
-    return _mock_narrate(evidence_results)
+    by_template = {r["template"]: r["evidence"] for r in evidence_results}
+    problems: dict[int, list[str]] = {}
+    for i, n in enumerate(narratives):
+        evidence = by_template.get(n["template_used"])
+        if evidence is None:
+            continue  # unknown template: generate_insights drops it anyway
+        allowed = collect_evidence_numbers([evidence.model_dump()])
+        bad = find_unverified(f'{n["text"]} {n["recommendation"]}', allowed)
+        if bad:
+            problems[i] = bad
+    return problems
 
 
 def _parse_narrator_response(raw_text: str) -> list[dict] | None:
@@ -245,9 +265,19 @@ def _parse_narrator_response(raw_text: str) -> list[dict] | None:
         # Normalize priority
         if ins.get("priority") not in valid_priorities:
             ins["priority"] = "medium"
+        if not isinstance(ins["text"], str) or not isinstance(ins["template_used"], str):
+            return None
         # Ensure recommendation exists
-        ins.setdefault("recommendation", "Monitor this metric and investigate further.")
-        ins.setdefault("confidence", 0.85)
+        if not isinstance(ins.get("recommendation"), str) or not ins["recommendation"].strip():
+            ins["recommendation"] = "Monitor this metric and investigate further."
+        # Confidence must be a number in [0, 1] or the Insight model rejects it.
+        # Models sometimes answer 90 (percent) or "high".
+        conf = ins.get("confidence")
+        if isinstance(conf, bool) or not isinstance(conf, (int, float)):
+            conf = 0.85
+        elif 1 < conf <= 100:
+            conf = conf / 100
+        ins["confidence"] = min(max(float(conf), 0.0), 1.0)
 
     return insights
 
@@ -282,8 +312,17 @@ def _mock_narrate(evidence_results: list[dict]) -> list[dict]:
         evidence = r["evidence"]
         generator = generators.get(template)
 
+        narrative = None
         if generator:
-            narrative = generator(evidence)
+            # A template sentence can't be written when its figures are
+            # missing (e.g. a store with $0 revenue has no averages). Fall
+            # through to the plain description instead of failing the report.
+            try:
+                narrative = generator(evidence)
+            except Exception as e:
+                logger.warning("Mock narrative for %s failed: %s", template, e)
+
+        if narrative:
             narratives.append(narrative)
         else:
             # Generic fallback for unknown templates

@@ -61,7 +61,7 @@ def _run_template(template_name: str, df: pd.DataFrame, profile: DataProfile) ->
     try:
         evidence = template.execute(df, profile)
     except Exception as e:  # a template bug must not take the conversation down
-        return ToolResult(ok=False, label=f"{template.display_name} failed", error=f"Template failed: {e}")
+        return ToolResult(ok=False, label=f"{template.display_name} failed", error=f"Template failed: {str(e)[:200]}")
     return ToolResult(
         ok=True,
         label=f"Ran the {template.display_name} analysis",

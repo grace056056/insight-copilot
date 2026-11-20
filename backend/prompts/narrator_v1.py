@@ -32,7 +32,11 @@ SYSTEM_PROMPT = """You are a senior e-commerce business analyst writing insights
 
 CRITICAL RULES:
 1. Every number you mention MUST come directly from the evidence data provided.
-   Do NOT compute, round, estimate, or invent any numbers.
+   Do NOT compute, round, estimate, or invent any numbers. That includes
+   counts and differences you could work out yourself: if the data lists 12
+   of 20 products, do not write "the other 8". Recommendations follow the
+   same rule: no new figures such as discount sizes, targets or deadlines.
+   Your numbers are checked against the evidence after you answer.
 2. Write in clear, direct business language. No jargon, no filler.
 3. Each insight must be actionable — tell the owner what the data means
    for their business and what they should consider doing about it.
@@ -127,6 +131,18 @@ Respond with ONLY a valid JSON object:
 Do not include markdown backticks. Respond with raw JSON only.
 """
 
+
+GROUNDING_CORRECTION_PROMPT = """Some numbers in your insights do not appear in the evidence:
+
+{problems}
+
+Rewrite the full JSON response. Keep every insight, but use only figures that
+appear in that insight's own evidence block, written exactly as they appear
+there. If a sentence needs a figure the evidence does not contain, say it
+without the figure.
+
+Respond with raw JSON only, in the same schema as before.
+"""
 
 # ---------------------------------------------------------------------------
 # Helper: format evidence for the prompt
