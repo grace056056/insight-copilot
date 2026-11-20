@@ -19,7 +19,7 @@ from analysis.registry import run_all
 from config import settings
 from services import narrator
 from services.profiler import profile_csv
-from tests.conftest import SAMPLE_PATH
+from tests.conftest import SAMPLE_PATH, kept
 
 
 # ---------------------------------------------------------------------------
@@ -205,7 +205,7 @@ def test_monthly_revenue_is_complete_whatever_the_date_format(client, base, fmt)
     assert (profile["date_range"]["start"], profile["date_range"]["end"]) == ("2024-01-01", "2024-06-30")
     results = client.post("/api/evidence").json()["results"]
     trend = next(r for r in results if r["template"] == "revenue_trend")["evidence"]["data"]
-    assert sum(row["revenue"] for row in trend) == pytest.approx(base.total_amount.sum(), abs=0.05)
+    assert sum(row["revenue"] for row in trend) == pytest.approx(kept(base).total_amount.sum(), abs=0.05)
 
 
 def test_unreadable_dates_are_flagged(client, base):
@@ -217,3 +217,41 @@ def test_unreadable_dates_are_flagged(client, base):
 
 def test_file_with_headers_but_no_rows_is_rejected(client, base):
     assert upload(client, base.head(0)).status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# Revenue is net: cancelled and refunded orders are not revenue
+# ---------------------------------------------------------------------------
+
+def test_every_template_reports_net_revenue_and_says_what_it_left_out(sample_profiled):
+    profile, df = sample_profiled
+    reversed_orders = df[df["order_status"] != "Completed"]
+    results = {r["template"]: r["evidence"] for r in run_all(df, profile)}
+
+    trend_total = sum(row["revenue"] for row in results["revenue_trend"].data)
+    assert trend_total == pytest.approx(kept(df).total_amount.sum(), abs=0.05)
+    for evidence in results.values():
+        assert f"{len(reversed_orders):,} orders" in evidence.description
+        assert f"${reversed_orders.total_amount.sum():,.2f}" in evidence.description
+
+
+def test_pip_can_still_ask_about_cancelled_and_refunded_orders(client):
+    client.get("/api/sample-dataset")
+    df = pd.read_csv(SAMPLE_PATH)
+    from agent.query import run_query
+    from models.coach import QuerySpec
+    from routers.upload import get_current_data
+    state = get_current_data()
+    spec = QuerySpec(agg="sum", metric_column="total_amount", group_by=["order_status"])
+    rows = {r["order_status"]: r["sum_total_amount"] for r in run_query(state["dataframe"], state["profile"], spec).data}
+    assert rows == pytest.approx(df.groupby("order_status").total_amount.sum().round(2).to_dict())
+
+
+def test_dataset_without_reversed_orders_is_untouched(base):
+    from analysis.revenue_basis import net_basis
+    for df in (base.drop(columns=["order_status"]), base.assign(order_status="Completed"),
+               base.assign(order_status="Cancelled")):
+        profile, parsed = profile_csv(df.to_csv(index=False).encode(), "t.csv")
+        profile = asyncio.run(__import__("services.semantic", fromlist=["x"]).classify_columns(profile))
+        basis = net_basis(parsed, profile)
+        assert not basis.applied and len(basis.df) == len(parsed)

@@ -5,6 +5,7 @@ import pytest
 
 from analysis.registry import get_all_templates, get_runnable_templates, run_all
 from models.schemas import SemanticRole
+from tests.conftest import kept
 
 
 def test_five_templates_registered():
@@ -39,7 +40,7 @@ def test_revenue_trend_matches_pandas(sample_profiled):
     data = result["evidence"].data
 
     expected = (
-        df.assign(month=pd.to_datetime(df["order_date"]).dt.to_period("M").astype(str))
+        kept(df).assign(month=pd.to_datetime(kept(df)["order_date"]).dt.to_period("M").astype(str))
         .groupby("month")["total_amount"].sum().round(2)
     )
     assert [d["month"] for d in data] == list(expected.index)

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import pandas as pd
 
+from analysis.revenue_basis import net_basis
 from models.coach import Agg, FilterOp, QueryFilter, QuerySpec
 from models.schemas import ChartType, DataProfile, Evidence, SemanticRole
 
@@ -54,7 +55,16 @@ def run_query(df: pd.DataFrame, profile: DataProfile, spec: QuerySpec) -> Eviden
     for g in spec.group_by:
         require(g)
 
+    # Net basis: cancelled/refunded orders are left out, unless the question
+    # is about order status itself (it filters or groups by that column).
+    basis = net_basis(df, profile)
+    asks_about_status = basis.status_column in spec.group_by or any(
+        f.column == basis.status_column for f in spec.filters
+    )
+    note = ""
     work = df
+    if basis.applied and not asks_about_status:
+        work, note = basis.df, basis.note()
     total_rows = len(work)
 
     # --- Filter -------------------------------------------------------------
@@ -119,7 +129,7 @@ def run_query(df: pd.DataFrame, profile: DataProfile, spec: QuerySpec) -> Eviden
 
     return Evidence(
         template_used="query",
-        description=_describe(spec, matched, total_rows),
+        description=_describe(spec, matched, total_rows) + note,
         data=data,
         chart_type=chart,
         x_key=x_key,

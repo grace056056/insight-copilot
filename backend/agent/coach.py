@@ -155,7 +155,7 @@ def _claude_answer(request: CoachRequest, df: pd.DataFrame, profile: DataProfile
     turn = _Turn()
     system = SYSTEM_PROMPT.format(
         max_steps=settings.COACH_MAX_STEPS - 1,
-        dataset_context=dataset_context(profile),
+        dataset_context=dataset_context(profile, df),
     )
     focus_id = _attach_focus(request, turn, df, profile)
     if focus_id:

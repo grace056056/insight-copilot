@@ -20,6 +20,7 @@ from pydantic import ValidationError
 
 from agent.query import QueryError, run_query
 from analysis.registry import get_runnable_templates
+from analysis.revenue_basis import net_basis
 from models.coach import QuerySpec
 from models.schemas import DataProfile, DType, Evidence, SemanticRole
 
@@ -59,7 +60,9 @@ def _run_template(template_name: str, df: pd.DataFrame, profile: DataProfile) ->
             error=f"Template '{template_name}' cannot run on this dataset. Available: {', '.join(templates) or 'none'}.",
         )
     try:
-        evidence = template.execute(df, profile)
+        basis = net_basis(df, profile)
+        evidence = template.execute(basis.df, profile)
+        evidence.description = basis.append_to(evidence.description)
     except Exception as e:  # a template bug must not take the conversation down
         return ToolResult(ok=False, label=f"{template.display_name} failed", error=f"Template failed: {str(e)[:200]}")
     return ToolResult(
@@ -94,9 +97,19 @@ def evidence_for_model(evidence: Evidence) -> dict:
     return payload
 
 
-def dataset_context(profile: DataProfile) -> str:
+def dataset_context(profile: DataProfile, df: pd.DataFrame | None = None) -> str:
     """Column profile as text. Statistics only — never raw rows."""
     lines = [f"File: {profile.filename} ({profile.row_count:,} rows)"]
+    if df is not None:
+        basis = net_basis(df, profile)
+        if basis.applied:
+            lines.append(
+                f"Revenue basis: every tool reports NET figures.{basis.note()} "
+                f"To look at those orders, filter or group by {basis.status_column}; "
+                f"that switches the exclusion off for that query. Say 'net revenue' "
+                f"when you quote revenue, and mention the excluded amount when the "
+                f"user asks about totals."
+            )
     if profile.date_range:
         lines.append(f"Date range: {profile.date_range.start} to {profile.date_range.end}")
     if profile.grain:

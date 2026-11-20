@@ -14,6 +14,7 @@ from agent.coach import answer_question
 from agent.grounding import collect_evidence_numbers, find_unverified
 from agent.query import QueryError, run_query
 from models.coach import CoachFocus, CoachRequest, QuerySpec
+from tests.conftest import kept
 
 
 def ask(question, df, profile, client=None, **kwargs):
@@ -28,7 +29,7 @@ def ask(question, df, profile, client=None, **kwargs):
 def test_query_grouped_sum_matches_pandas(sample_profiled):
     profile, df = sample_profiled
     ev = run_query(df, profile, QuerySpec(agg="sum", metric_column="total_amount", group_by=["region"]))
-    expected = df.groupby("region")["total_amount"].sum().round(2)
+    expected = kept(df).groupby("region")["total_amount"].sum().round(2)
     got = {row["region"]: row["sum_total_amount"] for row in ev.data}
     assert got == pytest.approx(expected.to_dict())
     assert sum(row["share_pct"] for row in ev.data) == pytest.approx(100, abs=0.3)
@@ -43,7 +44,8 @@ def test_query_filters_and_scalar(sample_profiled):
                  {"column": "total_amount", "op": "gte", "value": 50}],
     )
     ev = run_query(df, profile, spec)
-    subset = df[(df["channel"] == "Mobile App") & (df["total_amount"] >= 50)]
+    net = kept(df)
+    subset = net[(net["channel"] == "Mobile App") & (net["total_amount"] >= 50)]
     assert ev.data == [{"nunique_customer_id": subset["customer_id"].nunique(), "rows_matched": len(subset)}]
 
 
@@ -55,7 +57,7 @@ def test_query_time_grain_and_date_filter(sample_profiled):
     )
     ev = run_query(df, profile, spec)
     assert [row["month"] for row in ev.data] == ["2024-01", "2024-02"]
-    months = pd.to_datetime(df["order_date"]).dt.to_period("M").astype(str)
+    months = pd.to_datetime(kept(df)["order_date"]).dt.to_period("M").astype(str)
     assert ev.data[0]["row_count"] == int((months == "2024-01").sum())
     assert ev.chart_type.value == "line"
 
@@ -161,7 +163,7 @@ REGION_QUERY = {"agg": "sum", "metric_column": "total_amount", "group_by": ["reg
 
 def test_claude_loop_runs_tools_and_returns_grounded_answer(sample_profiled):
     profile, df = sample_profiled
-    west = round(df[df["region"] == "West"]["total_amount"].sum(), 2)
+    west = round(kept(df)[kept(df)["region"] == "West"]["total_amount"].sum(), 2)
     model = ScriptedModel(
         tool_use("query_data", REGION_QUERY),
         text(f"West leads with ${west:,.2f} in revenue.\nNext step: Shift ad budget toward West."),
@@ -181,7 +183,7 @@ def test_claude_loop_runs_tools_and_returns_grounded_answer(sample_profiled):
 
 def test_claude_loop_sends_invented_numbers_back_for_one_rewrite(sample_profiled):
     profile, df = sample_profiled
-    west = round(df[df["region"] == "West"]["total_amount"].sum(), 2)
+    west = round(kept(df)[kept(df)["region"] == "West"]["total_amount"].sum(), 2)
     model = ScriptedModel(
         tool_use("query_data", REGION_QUERY),
         text("West leads with roughly $99,999 in revenue."),
